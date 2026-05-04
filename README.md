@@ -14,12 +14,12 @@ BrainBytes is an AI-powered tutoring platform designed to provide accessible aca
 - Set up monitoring and observability tools
 
 ## Technology Stack
-Layer | Technology
---- | ---
-Frontend | Next.js
-Backend | Node.js
-Database | MongoDB Atlas
-Containerization | Docker
-CI/CD | GitHub Actions
-Cloud Provider | Oracle Cloud Free Tier
-Monitoring | Prometheus & Grafana
+|Layer|Technology|
+|---|---|
+|Frontend|Next.js|
+|Backend|Node.js|
+|Database|MongoDB Atlas|
+|Containerization|Docker|
+|CI/CD|GitHub Actions|
+|Cloud Provider|Oracle Cloud Free Tier|
+|Monitoring|Prometheus & Grafana|
