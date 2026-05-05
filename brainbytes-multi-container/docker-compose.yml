@@ -22,7 +22,7 @@ services:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
     environment:
-      - HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN}  # Replace this with your token
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}  # add token to .env with the name HUGGINGFACE_TOKEN
     depends_on:
       - mongo
     restart: unless-stopped
