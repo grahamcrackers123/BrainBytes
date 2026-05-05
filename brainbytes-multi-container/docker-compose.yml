@@ -3,7 +3,8 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "8080:3000"
+      # supposed to be 8080 but it's reserved i think
+      - "5000:3000"
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
