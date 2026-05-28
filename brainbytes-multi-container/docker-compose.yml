@@ -1,11 +1,9 @@
 version: '3'
 services:
-  # Frontend container
   frontend:
     build: ./frontend
     ports:
-      # supposed to be 8080 but it's reserved i think
-      - "5000:3000"
+      - "3000:3000"
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
@@ -13,21 +11,26 @@ services:
       - backend
     restart: unless-stopped
 
-  # Backend API container
   backend:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "5000:3000"
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
-    environment:
-      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}  # add token to .env with the name HUGGINGFACE_TOKEN
+
+    env_file:
+      - ./backend/.env
+
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
     depends_on:
       - mongo
+
     restart: unless-stopped
 
-  # MongoDB container
   mongo:
     image: mongo:4.4
     ports:
@@ -36,6 +39,5 @@ services:
       - mongo-data:/data/db
     restart: unless-stopped
 
-# Define volumes for persistent data
 volumes:
   mongo-data:

@@ -14,15 +14,14 @@ app.use(express.json());
 aiService.initializeAI();
 
 // Connect to MongoDB
-mongoose.connect('mongodb://mongo:27017/brainbytes', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  retryWrites: true
-}).then(() => {
+mongoose.connect('mongodb://mongo:27017/brainbytes')
+.then(() => {
   console.log('Connected to MongoDB');
-}).catch((err) => {
+})
+.catch((err) => {
   console.error('Failed to connect to MongoDB:', err);
 });
+
 
 // Import schema models
 const Message = require('./models/Message');
@@ -35,73 +34,205 @@ app.get('/', (req, res) => {
 });
 
 // Get all messages
-app.get('/api/messages', async (req, res) => {
-  try {
-    const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
-    const messages = await Message.find().sort({ createdAt: -1 }).limit(limit);
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  app.get('/api/messages', async (req, res) => {
 
-// Create a new message and get AI response
+    try {
+
+      const limit = Math.min(
+        parseInt(req.query.limit || '50', 10),
+        200
+      );
+
+      const subject =
+      (req.query.subject || 'general').toLowerCase();
+
+      const chatId =
+        req.query.chatId;
+
+      let filter = {
+        subject
+      };
+
+      if (chatId) {
+
+        filter.chatId = chatId;
+      }
+
+const messages = await Message.find(filter)
+      .sort({ createdAt: 1 })
+      .limit(limit);
+
+      res.json(messages);
+
+    } catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  });
+
+// Create a new message and get AI response (with filter)
+// Create a new message and get AI response (with filter)
 app.post('/api/messages', async (req, res) => {
+
   try {
-    // Save user message
-    const text = (req.body.text || '').trim();
-    const subject = (req.body.subject || 'general').toLowerCase();
+
+    // =========================
+    // REQUEST DATA
+    // =========================
+
+    const text =
+      (req.body.text || '').trim();
+
+    const subject =
+      (req.body.subject || 'general')
+      .toLowerCase();
+
+    const preferredSubjects =
+      req.body.preferredSubjects || [];
+
+    // =========================
+    // CHAT ID
+    // =========================
+
+    const chatId =
+      req.body.chatId ||
+      `chat_${subject}_${Date.now()}`;
+
+    // =========================
+    // VALIDATION
+    // =========================
 
     if (!text) {
-      return res.status(400).json({ error: 'Message text is required.' });
+
+      return res.status(400).json({
+        error: 'Message text is required.'
+      });
     }
 
+    // =========================
+    // SAVE USER MESSAGE
+    // =========================
+
     const userMessage = new Message({
+
       text,
       isUser: true,
       subject,
-      category: subject
+      category: subject,
+      chatId
+
     });
+
     await userMessage.save();
 
-    // Generate AI response with a 15-second overall timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 15000);
-    });
+    // =========================
+    // TIMEOUT
+    // =========================
 
-    // Race between the AI response and the timeout
-    const aiResult = await Promise.race([
-      aiService.generateResponse(text, { subject }),
-      timeoutPromise
-    ]).catch(() => ({
-      category: subject,
-      subject,
-      questionType: 'general',
-      sentiment: 'neutral',
-      response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
-    }));
+    const timeoutPromise =
+      new Promise((_, reject) => {
+
+        setTimeout(() => {
+
+          reject(
+            new Error('Request timeout')
+          );
+
+        }, 15000);
+
+      });
+
+    // =========================
+    // AI RESPONSE
+    // =========================
+
+    const aiResult =
+      await Promise.race([
+
+        aiService.generateResponse(
+          text,
+          {
+            subject,
+            filter: preferredSubjects
+          }
+        ),
+
+        timeoutPromise
+
+      ]).catch(() => ({
+
+        category: subject,
+        subject,
+        questionType: 'general',
+        sentiment: 'neutral',
+
+        response:
+          "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
+
+      }));
+
+    // =========================
+    // SAVE AI MESSAGE
+    // =========================
 
     const aiMessage = new Message({
+
       text: aiResult.response,
+
       isUser: false,
-      subject: aiResult.subject || subject,
-      questionType: aiResult.questionType || 'general',
-      sentiment: aiResult.sentiment || 'neutral',
-      category: aiResult.category || subject
+
+      subject:
+        aiResult.subject || subject,
+
+      questionType:
+        aiResult.questionType || 'general',
+
+      sentiment:
+        aiResult.sentiment || 'neutral',
+
+      category:
+        aiResult.category || subject,
+
+      chatId
+
     });
+
     await aiMessage.save();
 
-    // Return both messages
+    // =========================
+    // RETURN RESPONSE
+    // =========================
+
     res.status(201).json({
+
       userMessage,
       aiMessage,
-      category: aiResult.category,
-      questionType: aiResult.questionType,
-      sentiment: aiResult.sentiment
+
+      category:
+        aiResult.category,
+
+      questionType:
+        aiResult.questionType,
+
+      sentiment:
+        aiResult.sentiment,
+
+      chatId
+
     });
+
   } catch (err) {
-    console.error('Error in /api/messages route:', err);
-    res.status(400).json({ error: err.message });
+
+    console.error(
+      'Error in /api/messages route:',
+      err
+    );
+
+    res.status(400).json({
+      error: err.message
+    });
   }
 });
 
@@ -116,17 +247,18 @@ app.post('/api/profiles', async (req, res) => {
   }
 });
 
-// Get Profiles
+// Get Profiles (with filter)
 app.get('/api/profiles', async (req, res) => {
-  try {
-    const profiles = await UserProfile.find().sort({ createdAt: -1 });
-    res.json(profiles);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const { subjects } = req.query;
+  let filter = {};
+  if (subjects) {
+    filter.preferredSubjects = { $in: subjects.split(',') };
   }
+  const profiles = await UserProfile.find(filter);
+  res.json(profiles);
 });
 
-// Update Profile
+// Get Profile by ID
 app.get('/api/profiles/:id', async (req, res) => {
   try {
     const profile = await UserProfile.findById(req.params.id);
@@ -139,6 +271,7 @@ app.get('/api/profiles/:id', async (req, res) => {
   }
 });
 
+// Update Profile
 app.put('/api/profiles/:id', async (req, res) => {
   try {
     const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, {
@@ -180,7 +313,7 @@ app.post('/api/materials', async (req, res) => {
   }
 });
 
-// Get Materials (filter by subject)
+// Get Materials (filter by subject/topic)
 app.get('/api/materials', async (req, res) => {
   try {
     const filter = {};
@@ -198,7 +331,7 @@ app.get('/api/materials', async (req, res) => {
   }
 });
 
-// Get Material
+// Get Material by ID
 app.get('/api/materials/:id', async (req, res) => {
   try {
     const material = await LearningMaterial.findById(req.params.id);
@@ -215,3 +348,5 @@ app.get('/api/materials/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+

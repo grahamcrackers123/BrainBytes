@@ -1,7 +1,10 @@
+// frontend/pages/profile.js
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
 const SUBJECT_OPTIONS = ['math', 'science', 'history', 'english', 'technology', 'geography'];
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function Profile() {
   const [profiles, setProfiles] = useState([]);
@@ -16,18 +19,21 @@ export default function Profile() {
     [profiles, selectedId]
   );
 
-  const fetchProfiles = async () => {
-    try {
-      const resp = await axios.get('http://localhost:3000/api/profiles');
-      setProfiles(resp.data);
-    } catch (err) {
-      console.error('Error fetching profiles', err);
-    }
-  };
+  // Baguhin ito
+const fetchProfiles = async () => {
+  try {
+    const resp = await axios.get(`${API_URL}/api/profiles`); 
+    setProfiles(resp.data);
+  } catch (err) {
+    console.error('Error fetching profiles', err);
+  }
+};
 
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
+
+useEffect(() => {
+  fetchProfiles();
+}, []); 
+
 
   useEffect(() => {
     if (!selectedProfile) {
@@ -55,18 +61,14 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
 
-    const payload = {
-      name,
-      email,
-      preferredSubjects
-    };
+    const payload = { name, email, preferredSubjects };
 
     try {
       if (selectedId) {
-        const resp = await axios.put(`http://localhost:3000/api/profiles/${selectedId}`, payload);
+        const resp = await axios.put(`${API_URL}/api/profiles/${selectedId}`, payload);
         setProfiles((prev) => prev.map((profile) => (profile._id === selectedId ? resp.data : profile)));
       } else {
-        const resp = await axios.post('http://localhost:3000/api/profiles', payload);
+        const resp = await axios.post(`${API_URL}/api/profiles`, payload);
         setProfiles((prev) => [resp.data, ...prev]);
         setSelectedId(resp.data._id);
       }
@@ -79,12 +81,10 @@ export default function Profile() {
   };
 
   const handleDelete = async () => {
-    if (!selectedId) {
-      return;
-    }
+    if (!selectedId) return;
 
     try {
-      await axios.delete(`http://localhost:3000/api/profiles/${selectedId}`);
+      await axios.delete(`${API_URL}/api/profiles/${selectedId}`);
       setProfiles((prev) => prev.filter((profile) => profile._id !== selectedId));
       setSelectedId('');
     } catch (err) {
