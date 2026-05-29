@@ -26,215 +26,22 @@ const initializeAI = () => {
 };
 
 // =========================
-// SUBJECT VALIDATION
-// =========================
-
-function validateSubject(question, subject) {
-
-    const q = question.toLowerCase();
-
-    const mathKeywords = [
-        'solve',
-        '+',
-        '-',
-        '*',
-        '/',
-        '=',
-        'equation',
-        'algebra',
-        'geometry',
-        'calculate',
-        'math'
-    ];
-
-    const scienceKeywords = [
-        'photosynthesis',
-        'atom',
-        'gravity',
-        'biology',
-        'chemistry',
-        'physics',
-        'science'
-    ];
-
-    const historyKeywords = [
-        'war',
-        'rizal',
-        'history',
-        'president',
-        'independence'
-    ];
-
-    const technologyKeywords = [
-        'code',
-        'javascript',
-        'java',
-        'python',
-        'programming',
-        'html',
-        'css',
-        'technology'
-    ];
-
-    const geographyKeywords = [
-        'country',
-        'capital',
-        'map',
-        'continent',
-        'ocean',
-        'geography'
-    ];
-
-    // =========================
-    // GENERAL FILTER
-    // =========================
-
-    if (subject === 'general') {
-
-        if (
-            mathKeywords.some(k => q.includes(k)) ||
-            scienceKeywords.some(k => q.includes(k)) ||
-            historyKeywords.some(k => q.includes(k)) ||
-            technologyKeywords.some(k => q.includes(k)) ||
-            geographyKeywords.some(k => q.includes(k))
-        ) {
-
-            return {
-
-                valid: false,
-
-                message:
-                    '⚠ This question belongs to a specific subject. Please switch to the correct subject filter.'
-            };
-        }
-    }
-
-    // =========================
-    // MATH
-    // =========================
-
-    if (
-        subject === 'math' &&
-        !mathKeywords.some(k => q.includes(k))
-    ) {
-
-        return {
-
-            valid: false,
-
-            message:
-                '⚠ Please ask a math-related question while using the Math filter.'
-        };
-    }
-
-    // =========================
-    // SCIENCE
-    // =========================
-
-    if (
-        subject === 'science' &&
-        !scienceKeywords.some(k => q.includes(k))
-    ) {
-
-        return {
-
-            valid: false,
-
-            message:
-                '⚠ Please ask a science-related question while using the Science filter.'
-        };
-    }
-
-    // =========================
-    // HISTORY
-    // =========================
-
-    if (
-        subject === 'history' &&
-        !historyKeywords.some(k => q.includes(k))
-    ) {
-
-        return {
-
-            valid: false,
-
-            message:
-                '⚠ Please ask a history-related question while using the History filter.'
-        };
-    }
-
-    // =========================
-    // TECHNOLOGY
-    // =========================
-
-    if (
-        subject === 'technology' &&
-        !technologyKeywords.some(k => q.includes(k))
-    ) {
-
-        return {
-
-            valid: false,
-
-            message:
-                '⚠ Please ask a technology-related question while using the Technology filter.'
-        };
-    }
-
-    // =========================
-    // GEOGRAPHY
-    // =========================
-
-    if (
-        subject === 'geography' &&
-        !geographyKeywords.some(k => q.includes(k))
-    ) {
-
-        return {
-
-            valid: false,
-
-            message:
-                '⚠ Please ask a geography-related question while using the Geography filter.'
-        };
-    }
-
-    return {
-        valid: true
-    };
-}
-
-// =========================
 // GENERATE RESPONSE
 // =========================
 
 async function generateResponse(question, options = {}) {
 
-    const lowerQuestion = question.toLowerCase().trim();
-    const preferredSubject = options.subject || 'general';
+    const lowerQuestion =
+        question.toLowerCase().trim();
 
-    // =========================
-    // VALIDATE SUBJECT
-    // =========================
+    const preferredSubject =
+        options.subject || 'general';
 
-    const validationResult =
-        validateSubject(question, preferredSubject);
+    const questionType =
+        detectQuestionType(lowerQuestion);
 
-    if (!validationResult.valid) {
-
-        return {
-
-            category: preferredSubject,
-            subject: preferredSubject,
-            questionType: 'general',
-            sentiment: 'neutral',
-
-            response: validationResult.message
-        };
-    }
-
-    const questionType = detectQuestionType(lowerQuestion);
-    const sentiment = detectSentiment(lowerQuestion);
+    const sentiment =
+        detectSentiment(lowerQuestion);
 
     try {
 
@@ -246,67 +53,198 @@ Rules:
 - Keep answers beginner-friendly
 - Use markdown formatting when useful
 - Be concise but helpful
-- Stay inside the selected subject only
+
+IMPORTANT:
+- Only answer questions related to the selected subject.
+- If the question is unrelated to the selected subject,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
+
+        // =========================
+        // MATH
+        // =========================
 
         if (preferredSubject === 'math') {
 
             systemPrompt += `
 You are excellent at mathematics.
-Show simple solutions.
-Only answer math-related questions.
+
+Help solve:
+- algebra
+- equations
+- arithmetic
+- geometry
+- word problems
+
+Show step-by-step solutions when needed.
+
+If the user's question is NOT math-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // SCIENCE
+        // =========================
 
         if (preferredSubject === 'science') {
 
             systemPrompt += `
 You are excellent at science explanations.
-Only answer science-related questions.
+
+Topics may include:
+- biology
+- chemistry
+- physics
+- earth science
+- anatomy
+- ecosystems
+- astronomy
+
+Explain concepts clearly and simply.
+
+If the user's question is NOT science-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // HISTORY
+        // =========================
 
         if (preferredSubject === 'history') {
 
             systemPrompt += `
 You are excellent at history.
-Only answer history-related questions.
+
+Explain:
+- historical events
+- wars
+- presidents
+- important people
+- civilizations
+- timelines
+
+Keep explanations educational and factual.
+
+If the user's question is NOT history-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // TECHNOLOGY
+        // =========================
 
         if (preferredSubject === 'technology') {
 
             systemPrompt += `
 You are excellent at programming and technology.
-Only answer technology-related questions.
+
+Help with:
+- JavaScript
+- Python
+- Java
+- HTML
+- CSS
+- React
+- APIs
+- databases
+- software development
+
+Give beginner-friendly coding explanations.
+
+If the user's question is NOT technology-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // GEOGRAPHY
+        // =========================
 
         if (preferredSubject === 'geography') {
 
             systemPrompt += `
 You are excellent at geography.
-Only answer geography-related questions.
+
+Help explain:
+- countries
+- capitals
+- continents
+- oceans
+- maps
+- climates
+- natural resources
+
+Keep answers simple and educational.
+
+If the user's question is NOT geography-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // ENGLISH
+        // =========================
 
         if (preferredSubject === 'english') {
 
             systemPrompt += `
 You are excellent at English grammar and writing.
-Only answer English-related questions.
+
+Help with:
+- grammar
+- essays
+- spelling
+- sentence structure
+- vocabulary
+- paraphrasing
+
+Keep explanations easy to understand.
+
+If the user's question is NOT English-related,
+reply ONLY with:
+
+⚠ Please switch to the correct subject filter.
 `;
         }
+
+        // =========================
+        // GENERAL
+        // =========================
 
         if (preferredSubject === 'general') {
 
             systemPrompt += `
-Only answer general knowledge and casual educational questions.
-Reject highly specific subject-based questions.
+You are a helpful educational AI tutor.
+
+You may answer:
+- general knowledge
+- casual questions
+- educational topics
+- beginner learning questions
 `;
         }
 
-        const completion = await client.chat.completions.create({
+        // =========================
+        // AI REQUEST
+        // =========================
+
+        const completion =
+            await client.chat.completions.create({
 
             model: 'llama-3.1-8b-instant',
 
@@ -321,7 +259,7 @@ Reject highly specific subject-based questions.
                 }
             ],
 
-            temperature: 0.7,
+            temperature: 0.4,
             max_tokens: 300
         });
 

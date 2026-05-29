@@ -13,35 +13,59 @@ export default function Home() {
   const [subjectFilter, setSubjectFilter] = useState('general');
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
+  const [typingDots, setTypingDots] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
+  const [chatStarted, setChatStarted] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   const messageEndRef = useRef(null);
 
-  // Fetch messages
-  const fetchMessages = async () => {
-    try {
-      const response = await axios.get(
+const fetchMessages = async (chatId = currentChatId) => {
 
-      `${API_URL}/api/messages?subject=${subjectFilter}${
-        currentChatId
-          ? `&chatId=${currentChatId}`
-          : ''
-      }`
+  if (!chatId) {
+
+    setMessages([]);
+    setLoading(false);
+
+    return;
+  }
+
+  try {
+
+    setLoading(true);
+
+    const response = await axios.get(
+
+      `${API_URL}/api/messages?chatId=${chatId}`
 
     );
 
-      const sortedMessages = response.data.sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    const sortedMessages =
+      response.data.sort(
+
+        (a, b) =>
+
+          new Date(a.createdAt) -
+          new Date(b.createdAt)
+
       );
 
-      setMessages(sortedMessages);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setLoading(false);
-    }
-  };
+    setMessages(sortedMessages);
+
+  } catch (error) {
+
+    console.error(
+      'Error fetching messages:',
+      error
+    );
+
+  } finally {
+
+    setLoading(false);
+  }
+};
 
   // Fetch subjects
   const fetchSubjects = async () => {
@@ -63,6 +87,24 @@ export default function Home() {
   // Send message
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isOffline) {
+
+  const offlineMessage = {
+    _id: Date.now().toString(),
+    text:
+      'You are offline. Please reconnect to continue chatting.',
+    isUser: false,
+    createdAt: new Date().toISOString()
+  };
+
+  setMessages((prev) => [
+    ...prev,
+    offlineMessage
+  ]);
+
+  return;
+}
 
     if (!newMessage.trim()) return;
 
@@ -92,7 +134,7 @@ if (!activeChatId) {
   setChatHistory(newHistory);
 
   localStorage.setItem(
-    'brainbytesChatHistory',
+    `brainbytesChatHistory_${username}`,
     JSON.stringify(newHistory)
   );
 }
@@ -112,94 +154,153 @@ if (!activeChatId) {
     setIsTyping(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/messages`, {
-        text: userText,
-        subject: subjectFilter,
-        preferredSubjects: [subjectFilter],
-        chatId: activeChatId
-      });
+      const response = await axios.post(
+
+  `${API_URL}/api/messages`,
+
+  {
+    text: userText,
+    subject: subjectFilter,
+    preferredSubjects: [subjectFilter],
+    chatId: activeChatId
+  },
+
+  {
+    timeout: 5000
+  }
+
+);
 
       const aiMessage = response.data.aiMessage;
 
-      setMessages((prev) => {
-        const filtered = prev.filter(
-          (msg) => msg._id !== tempUserMessage._id
-        );
+await new Promise(resolve =>
+  setTimeout(resolve, 1500)
+);
 
-        const updated = [
-          ...filtered,
-          response.data.userMessage,
-          aiMessage
-        ];
+// REMOVE TEMP USER MESSAGE
+setMessages((prev) => {
 
-        updated.sort(
-          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-        );
+  const filtered = prev.filter(
+    (msg) => msg._id !== tempUserMessage._id
+  );
 
-        return updated;
-      });
+  return [
+    ...filtered,
+    response.data.userMessage
+  ];
+
+});
+
+// EMPTY AI MESSAGE FIRST
+const typingMessage = {
+  ...aiMessage,
+  text: ''
+};
+
+setMessages((prev) => [
+  ...prev,
+  typingMessage
+]);
+
+// TYPEWRITER EFFECT
+let currentText = '';
+
+const words =
+  aiMessage.text.split(' ');
+
+for (let i = 0; i < words.length; i++) {
+
+  currentText +=
+    words[i] + ' ';
+
+  await new Promise(resolve =>
+    setTimeout(resolve, 120)
+  );
+
+  setMessages((prev) =>
+
+    prev.map((msg) =>
+
+      msg._id === aiMessage._id
+        ? {
+            ...msg,
+            text: currentText
+          }
+        : msg
+
+    )
+
+  );
+
+}
+  setIsTyping(false);
 
     } catch (error) {
       console.error('Error sending message:', error);
 
       const errorMessage = {
         _id: Date.now().toString(),
-        text: 'Sorry, AI service is currently unavailable.',
+        text:
+          'Connection problem detected. Please check your internet or try again.',
         isUser: false,
         createdAt: new Date().toISOString()
       };
 
       setMessages((prev) => [...prev, errorMessage]);
-
-    } finally {
-      setIsTyping(false);
-    }
+        setIsTyping(false);
+    } 
   };
 
   const handleLogin = () => {
+
   if (!username.trim()) return;
 
-  localStorage.setItem('brainbytesUser', username);
+  // RESET OLD DATA FIRST
+  setMessages([]);
+  setChatHistory([]);
+  setCurrentChatId(null);
+  setChatStarted(false);
+
+  localStorage.setItem(
+    'brainbytesUser',
+    username
+  );
 
   setLoggedIn(true);
-  const firstChatId =
-  `chat_general_${Date.now()}`;
-
-setCurrentChatId(firstChatId);
-
-const starterHistory = [
-
-  {
-    id: firstChatId,
-    title: 'New Chat',
-    subject: 'general'
-  }
-
-];
-
-setChatHistory(starterHistory);
-
-localStorage.setItem(
-  'brainbytesChatHistory',
-  JSON.stringify(starterHistory)
-);
 };
 
 const handleLogout = () => {
-  localStorage.removeItem('brainbytesUser');
 
   setLoggedIn(false);
+
   setUsername('');
+
+  // CLEAR CURRENT UI STATES
+  setMessages([]);
+  setChatHistory([]);
+  setCurrentChatId(null);
+  setChatStarted(false);
+
+  localStorage.removeItem(
+    'brainbytesUser'
+  );
 };
 
 const handleNewChat = () => {
+  
+setChatStarted(true);
 
   const newChatId =
     `chat_${subjectFilter}_${Date.now()}`;
 
   setCurrentChatId(newChatId);
+  localStorage.setItem(
+  `brainbytesCurrentChat_${username}`,
+  newChatId
+  );
 
   setMessages([]);
+  setLoading(false);
 
   const updatedHistory = [
 
@@ -217,7 +318,7 @@ const handleNewChat = () => {
   setChatHistory(updatedHistory);
 
   localStorage.setItem(
-    'brainbytesChatHistory',
+    `brainbytesChatHistory_${username}`,
     JSON.stringify(updatedHistory)
   );
 };
@@ -232,18 +333,131 @@ const handleDeleteChat = (chatId) => {
   setChatHistory(updatedHistory);
 
   localStorage.setItem(
-    'brainbytesChatHistory',
+    `brainbytesChatHistory_${username}`,
     JSON.stringify(updatedHistory)
   );
 
-  // If active chat deleted
+  // IF ACTIVE CHAT DELETED
   if (currentChatId === chatId) {
 
+  // OPEN NEXT CHAT AUTOMATICALLY
+  if (updatedHistory.length > 0) {
+
+    const nextChat =
+      updatedHistory[0];
+
+    setCurrentChatId(
+      nextChat.id
+    );
+
+    localStorage.setItem(
+      `brainbytesCurrentChat_${username}`,
+      nextChat.id
+    );
+
+    setSubjectFilter(
+      nextChat.subject || 'general'
+    );
+
+    fetchMessages(nextChat.id);
+
+    setChatStarted(true);
+
+  } else {
+
+    // NO CHATS LEFT
     setCurrentChatId(null);
 
+    localStorage.removeItem(
+      `brainbytesCurrentChat_${username}`
+    );
+
     setMessages([]);
+
+    setLoading(false);
+
+    // HIDE INPUT + SEND
+    setChatStarted(false);
   }
+}
 };
+
+
+// ONLINE / OFFLINE DETECTION
+useEffect(() => {
+
+  const handleOnline = () => {
+
+    setIsOffline(false);
+
+  };
+
+  const handleOffline = () => {
+
+    setIsOffline(true);
+
+  };
+
+  window.addEventListener(
+    'online',
+    handleOnline
+  );
+
+  window.addEventListener(
+    'offline',
+    handleOffline
+  );
+
+  if (typeof window !== 'undefined') {
+
+  setIsOffline(
+    !window.navigator.onLine
+  );
+
+}
+
+  return () => {
+
+    window.removeEventListener(
+      'online',
+      handleOnline
+    );
+
+    window.removeEventListener(
+      'offline',
+      handleOffline
+    );
+
+  };
+
+}, []);
+
+
+// TYPING ANIMATION
+useEffect(() => {
+
+  if (!isTyping) {
+
+    setTypingDots('');
+    return;
+
+  }
+
+  const interval = setInterval(() => {
+
+    setTypingDots((prev) => {
+
+      if (prev === '...') return '';
+      return prev + '.';
+
+    });
+
+  }, 500);
+
+  return () => clearInterval(interval);
+
+}, [isTyping]);
+
 
   // Auto scroll
   useEffect(() => {
@@ -278,15 +492,43 @@ useEffect(() => {
 
     const savedHistory =
       localStorage.getItem(
-        'brainbytesChatHistory'
-      );
+      `brainbytesChatHistory_${savedUser}`
+    );
 
     if (savedHistory) {
 
-      setChatHistory(
-        JSON.parse(savedHistory)
-      );
-    }
+  setChatHistory(
+    JSON.parse(savedHistory)
+  );
+
+} else {
+
+  setChatHistory([]);
+
+}
+
+const savedCurrentChat =
+  localStorage.getItem(
+    `brainbytesCurrentChat_${savedUser}`
+  );
+
+if (savedCurrentChat) {
+
+  setCurrentChatId(
+    savedCurrentChat
+  );
+
+  setChatStarted(true);
+
+} else {
+
+  setCurrentChatId(null);
+
+  setMessages([]);
+
+  setChatStarted(false);
+
+}
   }
 
   // =========================
@@ -295,18 +537,19 @@ useEffect(() => {
 
   if (currentChatId) {
 
-    fetchMessages();
+  fetchMessages(currentChatId);
 
-  } else {
+} else {
 
-    setMessages([]);
-  }
+  setMessages([]);
+  setLoading(false);
+}
 
   fetchSubjects();
 
-}, [subjectFilter, currentChatId]);
+  }, [subjectFilter, currentChatId, loggedIn]);
 
-if (!loggedIn) {
+  if (!loggedIn) {
   return (
     <div
       style={{
@@ -392,6 +635,24 @@ if (!loggedIn) {
         BrainBytes AI Tutor
       </h1>
 
+      {isOffline && (
+
+  <div
+    style={{
+      backgroundColor: '#ff4d4f',
+      color: '#fff',
+      padding: '10px',
+      borderRadius: '10px',
+      marginBottom: '15px',
+      textAlign: 'center',
+      fontWeight: '600'
+    }}
+  >
+    ⚠ You are currently offline
+  </div>
+
+)}
+
       <div
         style={{
           display: 'flex',
@@ -408,7 +669,10 @@ if (!loggedIn) {
             border: '1px solid #ddd',
             borderRadius: '12px',
             backgroundColor: '#fff',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
           <h2
@@ -440,7 +704,7 @@ if (!loggedIn) {
               onClick={handleNewChat}
               style={{
                 ...buttonStyle,
-                backgroundColor: '#4caf50'
+                backgroundColor: '#57bcff'
               }}
             >
               + New Chat
@@ -448,13 +712,21 @@ if (!loggedIn) {
 
             <div
               style={{
-                marginTop: '25px'
+                marginTop: '25px',
+                flex: 1,
+                overflowY: 'auto',
+                maxHeight: '260px',
+                paddingRight: '4px'
               }}
             >
               <h3
                 style={{
-                  marginBottom: '12px',
-                  fontSize: '16px'
+                  marginBottom: '14px',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#222',
+                  fontFamily: "'Poppins', sans-serif",
+                  letterSpacing: '0.3px'
                 }}
               >
                 Recent Chats
@@ -467,18 +739,14 @@ if (!loggedIn) {
 
                   onClick={() => {
 
-                    setCurrentChatId(chat.id);
-
-                    // AUTO SWITCH SUBJECT
-                    setSubjectFilter(chat.subject);
-
-                    setTimeout(() => {
-
-                      fetchMessages();
-
-                    }, 100);
-
-                  }}
+                  setCurrentChatId(chat.id);
+                  localStorage.setItem(
+                    `brainbytesCurrentChat_${username}`,
+                    chat.id
+                  );
+                  setSubjectFilter(chat.subject);
+                  fetchMessages(chat.id);
+                }}
 
                   style={{
                     padding: '10px',
@@ -503,9 +771,17 @@ if (!loggedIn) {
                     }}
                   >
 
-                    <span>
-                      {chat.title}
-                    </span>
+                    <span
+                    style={{
+                      fontFamily: "'Poppins', sans-serif",
+                      fontWeight: '500',
+                      fontSize: '15px',
+                      letterSpacing: '0.3px',
+                      color: '#222'
+                    }}
+                  >
+                    {chat.title}
+                  </span>
 
                     <button
 
@@ -539,7 +815,10 @@ if (!loggedIn) {
             onClick={handleLogout}
             style={{
               ...buttonStyle,
-              backgroundColor: '#ff6b6b'
+              backgroundColor: '#ff6b6b',
+              marginTop: 'auto',
+              position: 'sticky',
+              bottom: '0'
             }}
           >
             Logout
@@ -558,9 +837,14 @@ if (!loggedIn) {
           <div style={{ marginBottom: '12px' }}>
             <label
               htmlFor="subjectFilter"
+
               style={{
                 display: 'block',
-                marginBottom: '6px'
+                marginBottom: '8px',
+                fontFamily: "'Poppins', sans-serif",
+                fontWeight: '600',
+                fontSize: '15px',
+                color: '#333'
               }}
             >
               Subject filter
@@ -570,11 +854,19 @@ if (!loggedIn) {
               id="subjectFilter"
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
+
               style={{
-                padding: '10px',
-                borderRadius: '12px',
-                border: '1px solid #ddd'
-              }}
+              padding: '10px',
+              borderRadius: '12px',
+              border: '1px solid #ddd',
+              fontFamily: "'Poppins', sans-serif",
+              fontWeight: '500',
+              fontSize: '15px',
+              color: '#333',
+              backgroundColor: '#fff',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
             >
               <option value="general">General</option>
               <option value="math">Math</option>
@@ -815,10 +1107,19 @@ if (!loggedIn) {
                             : 'left'
                         }}
                       >
-                        {message.isUser ? 'You' : 'AI Tutor'} •{' '}
+                        {message.isUser
+                          ? 'You'
+                          : 'AI Tutor'} •{' '}
+
                         {new Date(
                           message.createdAt
                         ).toLocaleTimeString()}
+
+                        {message.isUser && (
+                          <>
+                            {' '}• Seen
+                          </>
+                        )}
                       </div>
                     </div>
                   ))
@@ -833,7 +1134,7 @@ if (!loggedIn) {
                       maxWidth: '200px'
                     }}
                   >
-                    AI Tutor is typing...
+                    AI Tutor is typing{typingDots}
                   </div>
                 )}
 
@@ -843,44 +1144,54 @@ if (!loggedIn) {
           </div>
 
           {/* Input */}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              display: 'flex',
-              gap: '10px'
-            }}
-          >
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Ask a question..."
-              disabled={isTyping}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '16px',
-                border: '1px solid #ddd',
-                fontSize: '16px'
-              }}
-            />
 
-            <button
-              type="submit"
-              disabled={isTyping}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '16px',
-                backgroundColor: '#57bcff',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              {isTyping ? 'Sending...' : 'Send'}
-            </button>
-          </form>
+{chatStarted && (
+
+  <form
+    onSubmit={handleSubmit}
+    style={{
+      display: 'flex',
+      gap: '10px'
+    }}
+  >
+
+    <input
+      type="text"
+      value={newMessage}
+      onChange={(e) =>
+        setNewMessage(e.target.value)
+      }
+      placeholder="Ask a question..."
+      disabled={isTyping || isOffline}
+      style={{
+        flex: 1,
+        padding: '12px',
+        borderRadius: '16px',
+        border: '1px solid #ddd',
+        fontSize: '16px'
+      }}
+    />
+
+    <button
+      type="submit"
+      disabled={isTyping || isOffline}
+      style={{
+        padding: '12px 24px',
+        border: 'none',
+        borderRadius: '16px',
+        backgroundColor: '#57bcff',
+        color: '#fff',
+        cursor: 'pointer',
+        fontSize: '16px'
+      }}
+    >
+      {isTyping ? 'Sending...' : 'Send'}
+    </button>
+
+  </form>
+
+)}
+
         </div>
       </div>
     </div>

@@ -33,44 +33,62 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the BrainBytes API' });
 });
 
-// Get all messages
-  app.get('/api/messages', async (req, res) => {
+// =========================
+// GET MESSAGES
+// =========================
 
-    try {
+app.get('/api/messages', async (req, res) => {
 
-      const limit = Math.min(
-        parseInt(req.query.limit || '50', 10),
-        200
-      );
+  try {
 
-      const subject =
-      (req.query.subject || 'general').toLowerCase();
+    const limit = Math.min(
+      parseInt(req.query.limit || '50', 10),
+      200
+    );
 
-      const chatId =
-        req.query.chatId;
+    const chatId =
+      req.query.chatId;
 
-      let filter = {
-        subject
-      };
+    // =========================
+    // REQUIRE CHAT ID
+    // =========================
 
-      if (chatId) {
+    if (!chatId) {
 
-        filter.chatId = chatId;
-      }
+      return res.json([]);
+    }
 
-const messages = await Message.find(filter)
+    // =========================
+    // FILTER ONLY BY CHAT ID
+    // =========================
+
+    const messages =
+      await Message.find({
+
+        chatId
+
+      })
+
       .sort({ createdAt: 1 })
+
       .limit(limit);
 
-      res.json(messages);
+    res.json(messages);
 
-    } catch (err) {
+  } catch (err) {
 
-      res.status(500).json({
-        error: err.message
-      });
-    }
-  });
+    console.error(
+      'Error fetching messages:',
+      err
+    );
+
+    res.status(500).json({
+
+      error: err.message
+
+    });
+  }
+});
 
 // Create a new message and get AI response (with filter)
 // Create a new message and get AI response (with filter)
