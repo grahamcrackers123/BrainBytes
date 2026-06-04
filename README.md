@@ -6,6 +6,9 @@ BrainBytes is an AI-powered tutoring platform designed to provide accessible aca
 ## Team Members
 - Mykyla Jaimie Valuenzuela - lr.mjvalenzuela@mmdc.mcl.edu.ph
 - Denise Claire Monghit - lr.dcmonghit@mmdc.mcl.edu.ph
+- Adrian San Juan - lr.asanjuan@mmdc.mcl.edu.ph
+- Angelo Rafael Legaspi - lr.arlegaspi@mmdc.mcl.edu.ph
+- Nicole Andrea Coloma - lr.nacoloma@mmdc.mcl.edu.ph
 
 ## Project Goals
 - Implement a containerized application with proper networking
