@@ -12,6 +12,11 @@ jobs:
     name: Run Linters
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
     strategy:
       matrix:
         node-version: [14.x, 16.x, 18.x]
@@ -41,7 +46,7 @@ jobs:
       - name: Annotate Frontend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
         with: 
-          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
           report-path: frontend/eslint-report.json
 
       - name: Install Backend dependencies
@@ -56,7 +61,7 @@ jobs:
       - name: Annotate Backend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
         with: 
-          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
           report-path: backend/eslint-report.json
 
       - name: Uplaod ESLint reports
