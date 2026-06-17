@@ -10,7 +10,6 @@ jobs:
     name: Deploy to Test Environment
     runs-on: ubuntu-latest
     environment: test
-    needs: build
 
     strategy:
       matrix:
