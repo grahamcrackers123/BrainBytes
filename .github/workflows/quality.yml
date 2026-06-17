@@ -27,11 +27,11 @@ jobs:
           cache: 'npm'
 
       - name: Install Frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm ci
 
       - name: Lint Frontend code
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm run lint:js -- --format json --output-file eslint-report.json
         continue-on-error: true
 
@@ -42,11 +42,11 @@ jobs:
           report-path: frontend/eslint-report.json
 
       - name: Install Backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm ci
 
       - name: Lint Backend code
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm run lint:js -- --format json --output-file eslint-report.json
         continue-on-error: true
           

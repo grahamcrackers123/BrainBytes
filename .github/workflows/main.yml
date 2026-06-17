@@ -27,11 +27,11 @@ jobs:
           cache: 'npm'
 
       - name: Install Frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm ci
 
       - name: Lint Frontend code
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm run lint:js -- --format json --output-file eslint-report.json
         continue-on-error: true
 
@@ -42,11 +42,11 @@ jobs:
           report-path: frontend/eslint-report.json
 
       - name: Install Backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm ci
 
       - name: Lint Backend code
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm run lint:js -- --format json --output-file eslint-report.json
         continue-on-error: true
           
@@ -84,27 +84,27 @@ jobs:
           cache: 'npm'
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm install
 
       - name: Run frontend tests
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm test
 
       - name: Run Frontend tests with coverage
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm run test:coverage
 
       - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm install
 
       - name: Run backend tests
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm test
 
       - name: Run Backend tests with coverage
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm run test:coverage
 
       - name: Upload test coverage reports
@@ -130,7 +130,7 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend
+          context: ./brainbytes-multi-container/frontend
           push: false
           tags: brainbytes-frontend:latest
           cache-from: type=gha
@@ -139,7 +139,7 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
+          context: ./brainbytes-multi-container/backend
           push: false
           tags: brainbytes-backend:latest
           cache-from: type=gha
@@ -229,19 +229,19 @@ jobs:
           cache: 'npm'
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm ci
 
       - name: Audit frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm audit --json || true
 
       - name: Install backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm ci
 
       - name: Audit backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm audit --json || true
 
       - name: Run Snyk to check for vulnerabilities

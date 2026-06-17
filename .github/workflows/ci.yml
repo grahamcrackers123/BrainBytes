@@ -27,27 +27,27 @@ jobs:
           cache: 'npm'
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm install
 
       - name: Run frontend tests
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm test
 
       - name: Run Frontend tests with coverage
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm run test:coverage
 
       - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm install
 
       - name: Run backend tests
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm test
 
       - name: Run Backend tests with coverage
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm run test:coverage
 
       - name: Upload test coverage reports

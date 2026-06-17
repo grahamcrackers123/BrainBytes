@@ -25,7 +25,7 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend
+          context: ./brainbytes-multi-container/frontend
           push: false
           tags: brainbytes-frontend:latest
           cache-from: type=gha
@@ -34,7 +34,7 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
+          context: ./brainbytes-multi-container/backend
           push: false
           tags: brainbytes-backend:latest
           cache-from: type=gha

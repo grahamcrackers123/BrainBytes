@@ -28,19 +28,19 @@ jobs:
           cache: 'npm'
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm ci
 
       - name: Audit frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./brainbytes-multi-container/frontend
         run: npm audit --json || true
 
       - name: Install backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm ci
 
       - name: Audit backend dependencies
-        working-directory: ./backend
+        working-directory: ./brainbytes-multi-container/backend
         run: npm audit --json || true
 
       - name: Run Snyk to check for vulnerabilities
