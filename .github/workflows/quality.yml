@@ -2,9 +2,10 @@ name: BrainBytes Quality Checks
 
 on: 
   push: 
-    branches: [ main, initial ]
+    branches: [ main, initial, mj-automation ]
   pull_request:
-    branches: [ main, initial ]
+    branches: [ main, initial, mj-automation ]
+  workflow_dispatch:
 
 jobs:
   lint:

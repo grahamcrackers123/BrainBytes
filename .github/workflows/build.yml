@@ -2,13 +2,12 @@ name: BrainBytes Build
 
 on:
   push:
-    branches: [ main, initial ]
+    branches: [ main, initial, mj-automation ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [ main, initial ]
-
+    branches: [ main, initial, mj-automation ]
   workflow_dispatch:
 
 jobs:
