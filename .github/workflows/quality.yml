@@ -1,0 +1,67 @@
+name: BrainBytes Quality Checks
+
+on: 
+  push: 
+    branches: [ main, initial ]
+  pull_request:
+    branches: [ main, initial ]
+
+jobs:
+  lint:
+    name: Run Linters
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: | 
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install Frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint Frontend code
+        working-directory: ./frontend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+
+      - name: Annotate Frontend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-path: frontend/eslint-report.json
+
+      - name: Install Backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Lint Backend code
+        working-directory: ./backend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+          
+      - name: Annotate Backend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-path: backend/eslint-report.json
+
+      - name: Uplaod ESLint reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: eslint-reports
+          path: |
+            frontend/eslint-report.json
+            backend/eslint-report.json

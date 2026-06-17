@@ -1,0 +1,312 @@
+name: BrainBytes CI/CD
+
+on:
+  push:
+    branches: [ main, initial ]
+  pull_request:
+    branches: [ main, initial ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Run Linters
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: | 
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install Frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint Frontend code
+        working-directory: ./frontend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+
+      - name: Annotate Frontend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-path: frontend/eslint-report.json
+
+      - name: Install Backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Lint Backend code
+        working-directory: ./backend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+          
+      - name: Annotate Backend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          report-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-path: backend/eslint-report.json
+
+      - name: Uplaod ESLint reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: eslint-reports
+          path: |
+            frontend/eslint-report.json
+            backend/eslint-report.json
+
+  test: 
+    name: Run Tests
+    needs: lint 
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: | 
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Run Frontend tests with coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Run Backend tests with coverage
+        working-directory: ./backend
+        run: npm run test:coverage
+
+      - name: Upload test coverage reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-reports
+          path: |
+            frontend/coverage
+            backend/coverage
+
+  build:
+    name: Build Project
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: false
+          tags: brainbytes-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: false
+          tags: brainbytes-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose || true
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose version
+
+      - name: Test Docker Compose setup
+        run: | 
+          docker-compose -f docker-compose.yml up -d
+          docker-compose ps
+          docker-compose down
+      
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: docker-outputs
+          path: |
+            frontend/build
+            backend/dist
+
+  deploy: 
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+    environment: test
+    needs: build
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Node.js setup
+        uses: actions/setup-node@v2
+        with: 
+          node-version: ${{ matrix.node-version }}
+
+      - name: Build Docker images
+        run: docker-compose build
+
+      - name: Prepare deoployment
+        run: | 
+          echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
+          echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Deploy to Test Environment
+        run: |
+          echo "Deploying to test environment..."
+          echo "This is a placeholder for your actual deployment script"
+          echo "In future weeks, this will deploy to Oracle Cloud"
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          curl -s http://localhost:3000/health || echo "Service not available yet"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-outputs    
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: | 
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        working-directory: ./frontend
+        run: npm audit --json || true
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Audit backend dependencies
+        working-directory: ./backend
+        run: npm audit --json || true
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Build Docker images
+        run: docker-compose build
+
+      - name: Scan Docker images with Trivy
+        uses: aquasecurity/trivy-action@master
+        with: 
+          image-ref: 'brainbytes/frontend:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity-threshold: 'CRITICAL, HIGH'
+          
+      - name: Scan Docker images with Trivy
+        uses: aquasecurity/trivy-action@master
+        with: 
+          image-ref: 'brainbytes/backend:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity-threshold: 'CRITICAL,HIGH'
+
+  e2e: 
+    name: Run End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: | 
+            e2e-tests/package-lock.json
+
+      - name: Install End-to-End Test dependencies
+        working-directory: ./e2e-tests
+        run: npm ci
+            
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run End-to-End Tests
+        working-directory: ./e2e-tests
+        run: npm run test:e2e
