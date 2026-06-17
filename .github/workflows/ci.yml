@@ -31,7 +31,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend

@@ -32,7 +32,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Audit frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm ci
+        run: npm install 
 
       - name: Audit backend dependencies
         working-directory: ./brainbytes-multi-container/backend
@@ -54,7 +54,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Build Docker images
-        run: docker-compose build
+        run: docker compose build
 
       - name: Scan Docker images with Trivy
         uses: aquasecurity/trivy-action@master

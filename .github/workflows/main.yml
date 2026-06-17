@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend
@@ -46,7 +46,7 @@ jobs:
 
       - name: Install Backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm ci
+        run: npm install
 
       - name: Lint Backend code
         working-directory: ./brainbytes-multi-container/backend
@@ -91,7 +91,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
@@ -157,13 +157,13 @@ jobs:
           sudo apt-get install -y docker-compose || true
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose version
+          docker compose version
 
       - name: Test Docker Compose setup
         run: | 
-          docker-compose -f docker-compose.yml up -d
-          docker-compose ps
-          docker-compose down
+          docker compose -f docker-compose.yml up -d
+          docker compose ps
+          docker compose down
       
       - name: Save build artifacts
         uses: actions/upload-artifact@v4
@@ -193,7 +193,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Build Docker images
-        run: docker-compose build
+        run: docker compose build
 
       - name: Prepare deoployment
         run: | 
@@ -239,7 +239,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Audit frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
@@ -247,7 +247,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm ci
+        run: npm install
 
       - name: Audit backend dependencies
         working-directory: ./brainbytes-multi-container/backend
@@ -261,7 +261,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Build Docker images
-        run: docker-compose build
+        run: docker compose build
 
       - name: Scan Docker images with Trivy
         uses: aquasecurity/trivy-action@master
