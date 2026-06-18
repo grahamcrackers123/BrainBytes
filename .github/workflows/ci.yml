@@ -36,6 +36,7 @@ jobs:
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test
+        continue-on-error: true
 
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend

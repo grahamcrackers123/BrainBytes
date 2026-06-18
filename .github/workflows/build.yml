@@ -49,6 +49,7 @@ jobs:
           docker-compose version
 
       - name: Test Docker Compose setup
+        working-directory: ./brainbytes-multi-container
         run: | 
           docker-compose -f docker-compose.yml up -d
           docker-compose ps

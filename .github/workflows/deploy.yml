@@ -25,9 +25,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Build Docker images
+        working-directory: ./brainbytes-multi-container
         run: docker compose build
 
-      - name: Prepare deoployment
+      - name: Prepare deployment
         run: | 
           echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
           echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
