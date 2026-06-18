@@ -48,9 +48,3 @@ jobs:
         run: |
           echo "Verifying deployment..."
           curl -s http://localhost:3000/health || echo "Service not available yet"
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-outputs 
-          path: brainbytes-multi-container

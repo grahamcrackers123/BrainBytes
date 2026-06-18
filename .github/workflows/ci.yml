@@ -66,3 +66,11 @@ jobs:
             brainbytes-multi-container/backend/coverage
         continue-on-error: true
 
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-outputs
+          path: |
+            brainbytes-multi-container/frontend/build
+            brainbytes-multi-container/backend/dist
+

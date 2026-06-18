@@ -130,6 +130,14 @@ jobs:
             brainbytes-multi-container/backend/coverage
         continue-on-error: true
 
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-outputs
+          path: |
+            brainbytes-multi-container/frontend/build
+            brainbytes-multi-container/backend/dist
+
   build:
     name: Build Project
     needs: test
@@ -180,13 +188,11 @@ jobs:
           touch brainbytes-multi-container/frontend/build/placeholder.txt
           touch brainbytes-multi-container/backend/dist/placeholder.txt
 
-      - name: Save build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: docker-outputs
-          path: |
-            brainbytes-multi-container/frontend/build
-            brainbytes-multi-container/backend/dist
+          name: docker-outputs 
+          path: brainbytes-multi-container
 
   security-scan:
     runs-on: ubuntu-latest
