@@ -52,16 +52,11 @@ jobs:
           docker compose up -d
           docker compose ps
           docker compose down
-      
-      - name: Create mock fallback outputs if missing
-        run: |
-          mkdir -p brainbytes-multi-container/frontend/build
-          mkdir -p brainbytes-multi-container/backend/dist
-          touch brainbytes-multi-container/frontend/build/placeholder.txt
-          touch brainbytes-multi-container/backend/dist/placeholder.txt
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: docker-outputs 
-          path: brainbytes-multi-container
+          name: docker-outputs
+          path: |
+            brainbytes-multi-container/frontend/build
+            brainbytes-multi-container/backend/dist

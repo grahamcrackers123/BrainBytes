@@ -72,7 +72,7 @@ jobs:
         working-directory: ./brainbytes-multi-container
         run: docker compose build
 
-      - name: Scan Docker images with Trivy
+      - name: Scan Frontend Docker Images 
         uses: aquasecurity/trivy-action@master
         with: 
           image-ref: 'brainbytes-frontend:latest'
@@ -80,8 +80,8 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
           severity-threshold: 'CRITICAL, HIGH'
-          
-      - name: Scan Docker images with Trivy
+
+      - name: Scan Backend Docker Images 
         uses: aquasecurity/trivy-action@master
         with: 
           image-ref: 'brainbytes-backend:latest'

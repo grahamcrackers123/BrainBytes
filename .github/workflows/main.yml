@@ -100,12 +100,10 @@ jobs:
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test
-        continue-on-error: true
 
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test -- --coverage || echo "No coverage script setup found"
-        continue-on-error: true
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
@@ -114,12 +112,10 @@ jobs:
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
         run: npm test
-        continue-on-error: true
 
       - name: Run Backend tests with coverage
         working-directory: ./brainbytes-multi-container/backend
         run: npm test -- --coverage || echo "No coverage script setup found"
-        continue-on-error: true
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4
@@ -128,15 +124,6 @@ jobs:
           path: |
             brainbytes-multi-container/frontend/coverage
             brainbytes-multi-container/backend/coverage
-        continue-on-error: true
-
-      - name: Save build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-outputs
-          path: |
-            brainbytes-multi-container/frontend/build
-            brainbytes-multi-container/backend/dist
 
   build:
     name: Build Project
@@ -180,13 +167,56 @@ jobs:
           docker compose up -d
           docker compose ps
           docker compose down
-      
-      - name: Create mock fallback outputs if missing
+
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-outputs
+          path: |
+            brainbytes-multi-container/frontend/build
+            brainbytes-multi-container/backend/dist
+
+  deploy: 
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+    environment: test
+    needs: 
+      - build
+      - e2e
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+
+      - name: Create mock environment file for deploy
         run: |
-          mkdir -p brainbytes-multi-container/frontend/build
-          mkdir -p brainbytes-multi-container/backend/dist
-          touch brainbytes-multi-container/frontend/build/placeholder.txt
-          touch brainbytes-multi-container/backend/dist/placeholder.txt
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+
+      - name: Prepare deployment
+        run: | 
+          echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
+          echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Deploy to Test Environment
+        run: |
+          echo "Deploying to test environment..."
+          echo "This is a placeholder for your actual deployment script"
+          echo "In future weeks, this will deploy to Oracle Cloud"
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          curl -s http://localhost:3000/health || echo "Service not available yet"
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -197,7 +227,6 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     needs: lint
-    continue-on-error: true
 
     strategy:
       matrix:
@@ -257,7 +286,7 @@ jobs:
         working-directory: ./brainbytes-multi-container
         run: docker compose build
 
-      - name: Scan Docker images with Trivy
+      - name: Scan Frontend Docker Images 
         uses: aquasecurity/trivy-action@master
         with: 
           image-ref: 'brainbytes-frontend:latest'
@@ -265,8 +294,8 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
           severity-threshold: 'CRITICAL, HIGH'
-          
-      - name: Scan Docker images with Trivy
+
+      - name: Scan Backend Docker Images 
         uses: aquasecurity/trivy-action@master
         with: 
           image-ref: 'brainbytes-backend:latest'
@@ -290,21 +319,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: 
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: | 
-            e2e-tests/package-lock.json
-        continue-on-error: true
 
       - name: Install End-to-End Test dependencies
-        working-directory: ./e2e-tests
+        working-directory: ./brainbytes-multi-container/e2e-tests
         run: npm install --legacy-peer-deps
-        continue-on-error: true
             
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-        continue-on-error: true
 
       - name: Run End-to-End Tests
-        working-directory: ./e2e-tests
+        working-directory: ./brainbytes-multi-container/e2e-tests
         run: npm run test:e2e
-        continue-on-error: true
