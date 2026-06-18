@@ -33,6 +33,13 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
+      - name: Start backend
+        working-directory: ./brainbytes-multi-container/backend
+        run: |
+          npm install
+          npm start &
+          sleep 15
+
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test
@@ -40,10 +47,6 @@ jobs:
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test -- --coverage || echo "No coverage script setup found"
-
-      - name: Install backend dependencies
-        working-directory: ./brainbytes-multi-container/backend
-        run: npm install
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend

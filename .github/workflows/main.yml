@@ -150,8 +150,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./brainbytes-multi-container/frontend
+          push: false
           tags: brainbytes-frontend:latest
-          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -159,8 +159,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./brainbytes-multi-container/backend
+          push: false
           tags: brainbytes-backend:latest
-          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
