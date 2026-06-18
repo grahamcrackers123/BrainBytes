@@ -13,7 +13,6 @@ on:
 jobs:
   build:
     name: Build Project
-    needs: test
     runs-on: ubuntu-latest
 
     steps:
