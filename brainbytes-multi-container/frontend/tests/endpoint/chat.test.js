@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://backend:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 describe('E2E: Backend API reachable from frontend container', () => {
   test('backend root responds with welcome message', async () => {

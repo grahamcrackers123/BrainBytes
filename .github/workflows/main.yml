@@ -97,6 +97,13 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
+      - name: Start backend
+        working-directory: ./brainbytes-multi-container/backend
+        run: |
+          npm install
+          npm start &
+          sleep 15
+
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test
@@ -104,10 +111,6 @@ jobs:
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend
         run: npm test -- --coverage || echo "No coverage script setup found"
-
-      - name: Install backend dependencies
-        working-directory: ./brainbytes-multi-container/backend
-        run: npm install
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
@@ -147,8 +150,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./brainbytes-multi-container/frontend
-          push: false
           tags: brainbytes-frontend:latest
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -156,8 +159,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./brainbytes-multi-container/backend
-          push: false
           tags: brainbytes-backend:latest
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -192,6 +195,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-outputs 
+          path: brainbytes-multi-container
+
       - name: Node.js setup
         uses: actions/setup-node@v4
         with: 
@@ -218,15 +227,9 @@ jobs:
           echo "Verifying deployment..."
           curl -s http://localhost:3000/health || echo "Service not available yet"
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-outputs 
-          path: brainbytes-multi-container
-
   security-scan:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: build
 
     strategy:
       matrix:
