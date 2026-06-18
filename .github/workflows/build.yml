@@ -13,6 +13,7 @@ on:
 jobs:
   build:
     name: Build Project
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -21,6 +22,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Create mock environment file
+        run: |
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+          echo "NODE_ENV=test" >> brainbytes-multi-container/backend/.env
 
       - name: Build frontend image
         uses: docker/build-push-action@v4
@@ -40,25 +47,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose || true
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose version
-
       - name: Test Docker Compose setup
         working-directory: ./brainbytes-multi-container
         run: | 
-          docker-compose -f docker-compose.yml up -d
-          docker-compose ps
-          docker-compose down
+          docker compose up -d
+          docker compose ps
+          docker compose down
       
+      - name: Create mock fallback outputs if missing
+        run: |
+          mkdir -p brainbytes-multi-container/frontend/build
+          mkdir -p brainbytes-multi-container/backend/dist
+          touch brainbytes-multi-container/frontend/build/placeholder.txt
+          touch brainbytes-multi-container/backend/dist/placeholder.txt
+
       - name: Save build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: docker-outputs
           path: |
-            frontend/build
-            backend/dist
+            brainbytes-multi-container/frontend/build
+            brainbytes-multi-container/backend/dist

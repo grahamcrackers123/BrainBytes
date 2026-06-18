@@ -10,6 +10,7 @@ jobs:
     name: Deploy to Test Environment
     runs-on: ubuntu-latest
     environment: test
+    needs: build
 
     strategy:
       matrix:
@@ -24,11 +25,16 @@ jobs:
         with: 
           node-version: ${{ matrix.node-version }}
 
+      - name: Create mock environment file for deploy
+        run: |
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+
       - name: Build Docker images
         working-directory: ./brainbytes-multi-container
         run: docker compose build
 
-      - name: Prepare deployment
+      - name: Prepare deoployment
         run: | 
           echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
           echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
