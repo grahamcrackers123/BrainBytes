@@ -78,6 +78,17 @@ jobs:
     needs: lint 
     runs-on: ubuntu-latest
 
+    services:
+    mongo:
+      image: mongo:4.4
+      ports:
+        - 27017:27017
+      options: >-
+        --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || mongo --eval 'db.runCommand({ ping: 1 })'"
+        --health-interval 10s
+        --health-timeout 5s
+        --health-retries 5
+
     strategy:
       matrix:
         node-version: [14.x, 16.x, 18.x]
@@ -105,6 +116,7 @@ jobs:
           npm install
           npm start &
           sleep 15
+          cat backend.log
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
