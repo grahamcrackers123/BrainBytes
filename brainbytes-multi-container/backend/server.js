@@ -11,7 +11,9 @@ app.use(express.json());
 
 aiService.initializeAI();
 
-mongoose.connect('mongodb://mongo:27017/brainbytes')
+const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes';
+
+mongoose.connect(mongoUrl)
 .then(() => {
   console.log('Connected to MongoDB');
 })

@@ -114,6 +114,7 @@ jobs:
         working-directory: ./brainbytes-multi-container/backend
         env:
           GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          MONGO_URL: mongodb://localhost:27017/brainbytes
         run: |
           npm install
           touch backend.log
@@ -144,13 +145,15 @@ jobs:
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
         env:
-          OPENAI_API_KEY: sk-test-dummy-key-for-ci
+          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          MONGO_URL: mongodb://localhost:27017/brainbytes
         run: npm test
 
       - name: Run Backend tests with coverage
         working-directory: ./brainbytes-multi-container/backend
         env:
-          OPENAI_API_KEY: sk-test-dummy-key-for-ci
+          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          MONGO_URL: mongodb://localhost:27017/brainbytes
         run: npm test -- --coverage || echo "No coverage script setup found"
 
       - name: Upload test coverage reports
