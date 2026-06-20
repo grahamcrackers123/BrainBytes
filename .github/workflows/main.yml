@@ -202,18 +202,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Test Docker Compose setup
-        working-directory: ./brainbytes-multi-container
-        run: | 
-          docker compose up -d
-          docker compose ps
-          docker compose down
+      - name: Verify images exist
+        run: |
+          echo "--- docker images ---"
+          docker images
+          docker image inspect brainbytes-frontend:latest > /dev/null
+          docker image inspect brainbytes-backend:latest > /dev/null
 
       - name: Save Docker images as artifacts
         run: |
           mkdir -p /tmp/images
           docker save brainbytes-frontend:latest -o /tmp/images/brainbytes-frontend.tar
           docker save brainbytes-backend:latest -o /tmp/images/brainbytes-backend
+
+      - name: Test Docker Compose setup
+        working-directory: ./brainbytes-multi-container
+        run: | 
+          docker compose up -d
+          docker compose ps
+          docker compose down
 
       - name: Upload Docker images as artifacts
         uses: actions/upload-artifact@v4
@@ -373,11 +380,33 @@ jobs:
         node-version: [20.x, 22.x]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Node.js setup
+        uses: actions/setup-node@v4
         with: 
           node-version: ${{ matrix.node-version }}
+
+      - name: Create mock environment file
+        run: |
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+
+      - name: Start app with Docker Compose
+        working-directory: ./brainbytes-multi-container
+        run: |
+          docker compose up -d --build
+          echo "--- waiting for frontend to be ready ---"
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:7000 > /dev/null; then
+              echo "Frontend is up"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          docker compose ps
 
       - name: Install End-to-End Test dependencies
         working-directory: ./brainbytes-multi-container/e2e-tests
@@ -388,4 +417,16 @@ jobs:
 
       - name: Run End-to-End Tests
         working-directory: ./brainbytes-multi-container/e2e-tests
+        env:
+          E2E_BASE_URL: http://localhost:7000
         run: npm run test:e2e
+
+      - name: Show app logs on failure
+        if: failure()
+        working-directory: ./brainbytes-multi-container
+        run: docker compose logs
+ 
+      - name: Stop Docker Compose
+        if: always()
+        working-directory: ./brainbytes-multi-container
+        run: docker compose down
