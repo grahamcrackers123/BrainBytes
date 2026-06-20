@@ -116,10 +116,11 @@ jobs:
           OPENAI_API_KEY: sk-test-dummy-key-for-ci
         run: |
           npm install
-          npm start &
-          sleep 15
+          touch backend.log
+          nohup npm start > backend.log 2>&1 &
+          sleep 10
           echo "--- backend.log ---"
-          cat backend.log
+          cat backend.log || echo "(log not available yet)"
           echo "--- checking port ---"
           curl -sv http://localhost:3000/ || echo "localhost:3000 not responding yet"
 
