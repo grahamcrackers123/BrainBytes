@@ -112,6 +112,8 @@ jobs:
 
       - name: Start backend
         working-directory: ./brainbytes-multi-container/backend
+        env:
+          OPENAI_API_KEY: sk-test-dummy-key-for-ci
         run: |
           npm install
           npm start &
@@ -135,10 +137,14 @@ jobs:
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
+        env:
+          OPENAI_API_KEY: sk-test-dummy-key-for-ci
         run: npm test
 
       - name: Run Backend tests with coverage
         working-directory: ./brainbytes-multi-container/backend
+        env:
+          OPENAI_API_KEY: sk-test-dummy-key-for-ci
         run: npm test -- --coverage || echo "No coverage script setup found"
 
       - name: Upload test coverage reports
