@@ -113,7 +113,7 @@ jobs:
       - name: Start backend
         working-directory: ./brainbytes-multi-container/backend
         env:
-          OPENAI_API_KEY: sk-test-dummy-key-for-ci
+          GROQ_API_KEY: gsk-test-dummy-key-for-ci
         run: |
           npm install
           touch backend.log
@@ -129,6 +129,11 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3000
         run: npm test
+
+      - name: Show backend log after frontend tests
+        if: always()
+        working-directory: ./brainbytes-multi-container/backend
+        run: cat backend.log || echo "(no backend.log found)"
 
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend

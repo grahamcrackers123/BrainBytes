@@ -110,6 +110,8 @@ app.post('/api/messages', async (req, res) => {
     });
   } catch (err) {
     console.error('Error in /api/messages route:', err);
+    console.error('Full error object:', err);
+    console.error('Error stack:', err.stack);
     res.status(400).json({ error: err.message });
   }
 });
@@ -137,6 +139,7 @@ app.get('/api/profiles', async (req, res) => {
     res.json(profiles);
   } catch (err) {
     console.error('Error fetching profiles:', err);
+    console.error('Full error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -150,6 +153,7 @@ app.get('/api/profiles/:id', async (req, res) => {
     }
     res.json(profile);
   } catch (err) {
+    console.error('Error fetching profile:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -207,6 +211,7 @@ app.get('/api/materials', async (req, res) => {
     const materials = await LearningMaterial.find(filter).sort({ createdAt: -1 });
     res.json(materials);
   } catch (err) {
+    console.error('Full error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -220,6 +225,7 @@ app.get('/api/materials/:id', async (req, res) => {
     }
     res.json(material);
   } catch (err) {
+    console.error('Error fetching material:', err);
     res.status(400).json({ error: err.message });
   }
 });
