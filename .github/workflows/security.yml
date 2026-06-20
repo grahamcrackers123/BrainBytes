@@ -1,12 +1,6 @@
 name: BrainBytes Security Scan
 
 on: 
-  push: 
-    branches: [ main, initial, mj-automation ]
-  pull_request:
-    branches: [ main, initial, mj-automation ]
-  schedule: 
-    - cron: '0 0 * * 0' 
   workflow_dispatch:
 
 jobs: 
@@ -67,9 +61,16 @@ jobs:
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
 
-      - name: Build Docker images
-        working-directory: ./brainbytes-multi-container
-        run: docker compose build
+      - name: Download Docker image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp/images
+
+      - name: Load Docker images
+        run: |
+          docker load -i /tmp/images/frontend.tar
+          docker load -i /tmp/images/backend.tar
 
       - name: Scan Frontend Docker Images 
         uses: aquasecurity/trivy-action@master
@@ -78,7 +79,7 @@ jobs:
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
-          severity-threshold: 'CRITICAL, HIGH'
+          severity: 'CRITICAL,HIGH'
 
       - name: Scan Backend Docker Images 
         uses: aquasecurity/trivy-action@master
@@ -87,4 +88,4 @@ jobs:
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
-          severity-threshold: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH'

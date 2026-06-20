@@ -1,10 +1,6 @@
 name: BrainBytes CI
 
 on: 
-  push: 
-    branches: [ main, initial, mj-automation ]
-  pull_request:
-    branches: [ main, initial, mj-automation ]
   workflow_dispatch:
 
 jobs:
@@ -42,10 +38,14 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
         run: npm test
 
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
         run: npm test -- --coverage || echo "No coverage script setup found"
 
       - name: Run backend tests
