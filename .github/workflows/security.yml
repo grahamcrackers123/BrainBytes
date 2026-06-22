@@ -69,8 +69,8 @@ jobs:
 
       - name: Load Docker images
         run: |
-          docker load -i /tmp/images/frontend.tar
-          docker load -i /tmp/images/backend.tar
+          docker load -i /tmp/images/brainbytes-frontend.tar
+          docker load -i /tmp/images/brainbytes-backend.tar
 
       - name: Scan Frontend Docker Images 
         uses: aquasecurity/trivy-action@master

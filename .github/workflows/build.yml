@@ -52,7 +52,7 @@ jobs:
         run: |
           mkdir -p /tmp/images
           docker save brainbytes-frontend:latest -o /tmp/images/brainbytes-frontend.tar
-          docker save brainbytes-backend:latest -o /tmp/images/brainbytes-backend
+          docker save brainbytes-backend:latest -o /tmp/images/brainbytes-backend.tar
 
       - name: Upload Docker images as artifacts
         uses: actions/upload-artifact@v4
