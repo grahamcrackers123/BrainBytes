@@ -17,18 +17,16 @@ echo " Commit:      $DEPLOY_SHA"
 echo "========================================"
 
 # Load environment-specific variables
+COMPOSE_DIR="brainbytes-multi-container"
 case "$ENVIRONMENT" in
   test)
-    COMPOSE_FILE="docker-compose.yml"
-    PORT_PREFIX=""
+    COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
     ;;
   staging)
-    COMPOSE_FILE="docker-compose.staging.yml"
-    PORT_PREFIX="1"
+    COMPOSE_FILE="$COMPOSE_DIR/docker-compose.staging.yml"
     ;;
   production)
-    COMPOSE_FILE="docker-compose.prod.yml"
-    PORT_PREFIX="2"
+    COMPOSE_FILE="$COMPOSE_DIR/docker-compose.prod.yml"
     ;;
   *)
     echo "Unknown environment: $ENVIRONMENT"
@@ -53,6 +51,7 @@ docker compose -f "$COMPOSE_FILE" up -d --build
 
 # Health check
 echo "Waiting for services to be ready..."
+sleep 10
 for i in $(seq 1 30); do
   if curl -sf http://localhost:7000/ > /dev/null 2>&1; then
     echo "Frontend is up!"
