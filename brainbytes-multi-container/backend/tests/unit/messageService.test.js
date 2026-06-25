@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Message = require('../../models/Message');
 
 jest.mock('../../models/Message');
