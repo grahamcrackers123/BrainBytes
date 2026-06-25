@@ -11,6 +11,7 @@ beforeAll(async () => {
   const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes_test';
   await mongoose.connect(mongoUrl);
   await mongoose.connection.dropDatabase();
+  await UserProfile.createIndexes();
 
   app = express();
   app.use(cors());
