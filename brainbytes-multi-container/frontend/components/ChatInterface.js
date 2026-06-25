@@ -33,7 +33,7 @@ export default function ChatInterface() {
 
     try {
       // Send message to backend API
-      const response = await fetch('http://localhost:4000/api/chat', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
