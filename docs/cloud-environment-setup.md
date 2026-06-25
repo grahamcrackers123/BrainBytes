@@ -23,10 +23,8 @@ BrainBytes is deployed on **Railway.app** using its free tier. Railway is a clou
 | Service | Root Directory | Build Command | Start Command |
 |---------|---------------|---------------|---------------|
 | Backend | `brainbytes-multi-container/backend` | `npm install` | `npm start` |
-| Frontend | `brainbytes-multi-container/frontend` | Use Dockerfile (see note below) | Use Dockerfile |
+| Frontend | `brainbytes-multi-container/frontend` | `npm install && npm run build` | `npm run start` |
 | MongoDB | Use Railway's **Add Plugin** → **MongoDB** | — | — |
-
-> **Important**: The frontend service uses a multi-stage Dockerfile for production builds. Railway will automatically detect and use the Dockerfile. Do not use Nixpacks for the frontend — delete the `nixpacks.toml` if you created one.
 
 ### Step 3: Configure Health Checks
 
@@ -62,20 +60,10 @@ Add these in Railway dashboard → **Variables** for each service:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `NEXT_PUBLIC_API_URL` | `https://brainbytes-backend.up.railway.app` | Backend API URL (replace with your actual backend Railway URL) |
+| `NEXT_PUBLIC_API_URL` | `$(BACKEND_URL)` | Backend API URL (Railway provides this) |
 | `PORT` | `3000` | Next.js server port |
 
-> **Critical**: The `NEXT_PUBLIC_API_URL` must be set **at build time** because Next.js inlines `NEXT_PUBLIC_*` variables during `npm run build`. In Railway:
-> 1. Find your backend's Railway URL (e.g., `https://brainbytes-backend.up.railway.app`)
-> 2. Add `NEXT_PUBLIC_API_URL=https://brainbytes-backend.up.railway.app` to the frontend service's **Variables** in Railway dashboard
-> 3. Railway passes this as a build arg to the Dockerfile automatically
-
-### Getting Your Backend URL
-
-1. Go to Railway dashboard → select your project
-2. Click on the **Backend** service
-3. Look at the **Domains** section — copy the Railway-generated URL
-4. Paste this URL (without trailing slash) as `NEXT_PUBLIC_API_URL` in the frontend service's variables
+> **Note**: Railway auto-generates `RAILWAY_MONGODB_URL` and `BACKEND_URL` environment variables when you link services. No need to manually enter them.
 
 ---
 
@@ -269,61 +257,7 @@ cmd = 'npm run start'
 
 ---
 
-## 8. Troubleshooting Common Issues
-
-### "Connection problem detected" when chatting
-
-This means the frontend cannot reach the backend API. Check:
-
-```
-1. Is NEXT_PUBLIC_API_URL set correctly?
-   → Railway dashboard → Frontend → Variables
-   → Should be: https://brainbytes-backend.up.railway.app
-   → (Replace with your actual backend Railway URL)
-
-2. Is the backend running?
-   → Railway dashboard → Backend → Logs
-   → Should show: "Server running on port 3000"
-   → Should show: "Connected to MongoDB"
-
-3. Is GROQ_API_KEY set?
-   → Railway dashboard → Backend → Variables
-   → Should have GROQ_API_KEY set
-
-4. Is MONGO_URL set correctly?
-   → Railway dashboard → Backend → Variables
-   → Should use $(RAILWAY_MONGODB_URL)/brainbytes
-```
-
-### Backend fails to start
-
-Check backend logs in Railway dashboard:
-
-```
-Error: Cannot find module 'openai'
-→ Run npm install locally and push again
-
-MongooseServerSelectionError: connect ECONNREFUSED
-→ Check MONGO_URL variable and MongoDB plugin status
-
-Error: GROQ_API_KEY is not set
-→ Add GROQ_API_KEY to backend environment variables
-```
-
-### Deploy to Railway workflow fails
-
-The GitHub Actions deploy workflow (`deploy-railway.yml`) requires:
-1. A valid `RAILWAY_TOKEN` secret in GitHub
-2. The Railway CLI must have project access
-
-**Alternative**: Skip the GitHub Actions workflow and use Railway's **auto-deploy from GitHub** instead:
-1. Railway dashboard → Project → Settings → GitHub Repo
-2. Enable auto-deploy on the `main` branch
-3. Every push to `main` automatically deploys
-
----
-
-## 9. Verification Checklist
+## 8. Verification Checklist
 
 - [ ] Railway project created and connected to GitHub
 - [ ] Backend service deploys successfully
