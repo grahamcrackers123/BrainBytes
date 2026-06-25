@@ -42,7 +42,7 @@ jobs:
         run: |
           echo "Deploying to test environment..."
           echo "This is a placeholder for your actual deployment script"
-          echo "In future weeks, this will deploy to Oracle Cloud"
+          echo "In future weeks, this will deploy to Railway.app"
 
       - name: Verify Deployment
         run: |

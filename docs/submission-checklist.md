@@ -85,7 +85,7 @@ BrainBytes/
 ├── .github/
 │   ├── workflows/
 │   │   ├── main.yml              # Main CI/CD pipeline
-│   │   ├── deploy-oci.yml        # Oracle Cloud deployment
+│   │   ├── deploy-railway.yml    # Railway.app deployment
 │   │   ├── build.yml             # Build workflow (standalone)
 │   │   ├── security.yml          # Security scan (standalone)
 │   │   ├── quality.yml           # Quality checks (standalone)
@@ -116,7 +116,7 @@ BrainBytes/
 │   ├── ci-cd-setup.md            # CI/CD pipeline docs
 │   ├── testing-guide.md          # Testing guide & examples
 │   ├── testing-strategy-submission.md  # Strategy & challenges
-│   ├── cloud-environment-setup.md      # OCI setup guide
+│   ├── cloud-environment-setup.md      # Cloud setup guide
 │   ├── deployment-plan.md        # Full deployment plan
 │   ├── philippine-considerations.md    # PH-specific concerns
 │   ├── architecture-diagram.md   # Architecture diagram

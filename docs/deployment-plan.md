@@ -9,7 +9,7 @@
 │                     GitHub                              │
 │  ┌─────────┐  ┌────────┐  ┌────────┐  ┌───────────┐   │
 │  │  Code   │  │ Lint & │  │ Build &│  │ Deploy to │   │
-│  │  Push   │──▶│  Test  │──▶│Package │──▶│   OCI     │   │
+│  │  Push   │──▶│  Test  │──▶│Package │──▶│  Railway   │   │
 │  └─────────┘  └────────┘  └────────┘  └───────────┘   │
 └──────────────────────────┬──────────────────────────────┘
                            │ Docker images via artifact
@@ -55,15 +55,17 @@
 2. **Frontend** → HTTP → **Backend API** (localhost:3000)
 3. **Backend** → MongoDB driver → **MongoDB** (localhost:27017)
 4. **Backend** → HTTPS → **Groq AI API** (external)
-5. **GitHub Actions** → SSH/SCP → **OCI Instance** (deployment)
+5. **GitHub Actions** → `railway up` → **Railway services** (deployment)
 
 ### Network Topology
 
-| Segment | CIDR | Purpose |
-|---------|------|---------|
-| VCN | 10.0.0.0/16 | Main virtual network |
-| Public Subnet | 10.0.1.0/24 | Compute instance, public endpoints |
-| Internet Gateway | — | Public internet access |
+Railway.app manages all networking automatically:
+
+| Service | Internal URL | Public URL | Access |
+|---------|-------------|------------|--------|
+| Frontend | `brainbytes-frontend.up.railway.app` | Auto-assigned `*.railway.app` | HTTPS public |
+| Backend | `brainbytes-backend.up.railway.app` | Auto-assigned `*.railway.app` | HTTPS public |
+| MongoDB | Internal Railway plugin | Not exposed | Private only |
 
 ---
 
@@ -103,9 +105,9 @@
 
 ### Data Protection
 
-- **At rest**: MongoDB data stored on encrypted block volume
-- **In transit**: HTTP in internal Docker network; HTTPS via Nginx reverse proxy for external
-- **Backups**: Regular `mongodump` to `/mnt/brainbytes-data/backups/`
+- **At rest**: MongoDB data stored on Railway's managed persistent storage
+- **In transit**: HTTPS between user and Railway services; internal HTTP within Railway network
+- **Backups**: Railway MongoDB plugin includes automated backups
 
 ---
 
@@ -113,9 +115,17 @@
 
 ### Step-by-Step Deployment
 
+#### Option A: Automatic via Railway GitHub Integration
+
+1. Connect your GitHub repo to Railway
+2. Select the `main` branch for auto-deploy
+3. Railway detects changes and deploys automatically on push
+
+#### Option B: Manual via GitHub Actions
+
 ```yaml
-# Triggered via GitHub Actions on push to main
-name: Deploy to Oracle Cloud
+# .github/workflows/deploy-railway.yml
+name: Deploy to Railway
 
 on:
   push:
@@ -126,52 +136,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Build Docker images
-        run: |
-          docker build -t brainbytes-frontend ./frontend
-          docker build -t brainbytes-backend ./backend
-      
-      - name: Save and transfer images
-        run: |
-          docker save brainbytes-frontend | gzip > frontend.tar.gz
-          docker save brainbytes-backend | gzip > backend.tar.gz
-          scp frontend.tar.gz backend.tar.gz ubuntu@${{ secrets.OCI_HOST }}:/tmp/
-      
-      - name: Deploy on OCI instance
-        run: |
-          ssh ubuntu@${{ secrets.OCI_HOST }} '
-            docker load < /tmp/frontend.tar.gz
-            docker load < /tmp/backend.tar.gz
-            cd ~/brainbytes
-            docker compose -f docker-compose.prod.yml up -d
-          '
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy Backend
+        working-directory: ./brainbytes-multi-container/backend
+        run: railway up --service brainbytes-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy Frontend
+        working-directory: ./brainbytes-multi-container/frontend
+        run: railway up --service brainbytes-frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 ```
 
 ### Verification Steps
 
 ```bash
-# After deployment, verify:
-curl -s http://<OCI_PUBLIC_IP>/          # Should return 200
-curl -s http://<OCI_PUBLIC_IP>:3000/     # Should return welcome message
-curl -s http://<OCI_PUBLIC_IP>:3000/api/messages  # Should return JSON
-
-docker ps  # All 3 containers should be running
-docker logs brainbytes-backend   # No error messages
+# After deployment, verify via Railway URL:
+curl -s https://brainbytes-backend.up.railway.app/          # Should return 200
+curl -s https://brainbytes-frontend.up.railway.app/         # Should return HTML
+curl -s https://brainbytes-backend.up.railway.app/api/messages  # Should return JSON
 ```
+
+Or check in Railway dashboard:
+1. Go to https://railway.app/dashboard
+2. Select your project
+3. Check that all services show **Running** status
+4. Click on each service to view deployment logs
 
 ### Rollback Procedure
 
-```bash
-# Rollback to previous Docker image version
-docker compose -f docker-compose.prod.yml down
-docker tag brainbytes-frontend:previous brainbytes-frontend:latest
-docker tag brainbytes-backend:previous brainbytes-backend:latest
-docker compose -f docker-compose.prod.yml up -d
+1. Go to Railway dashboard → **Deployments** tab
+2. Click **Rollback** on the previous successful deployment
+3. Railway automatically restores the previous version
 
-# Or restore from backup
-mongorestore --drop /mnt/brainbytes-data/backups/latest/
-```
+If database rollback is needed:
+1. Railway MongoDB plugin → **Backups** tab
+2. Select a backup timestamp
+3. Click **Restore**
 
 ---
 
@@ -201,12 +207,10 @@ ab -n 100 -c 10 http://localhost:3000/
 
 ### Security Testing
 
-```bash
-# Test firewall rules
-nmap -p 22,80,443,27017,3000 <OCI_PUBLIC_IP>
-
-# Test for open ports (only 22, 80, 443, 3000 should be open)
-```
+- Railway manages network security automatically
+- All services communicate over internal Railway network
+- MongoDB is accessible only within the Railway project
+- Verify that no sensitive data is exposed in logs via Railway dashboard
 
 ---
 
@@ -214,36 +218,33 @@ nmap -p 22,80,443,27017,3000 <OCI_PUBLIC_IP>
 
 ### Routine Maintenance
 
-| Frequency | Task | Command |
-|-----------|------|---------|
-| Daily | Check logs | `docker logs --tail 50 brainbytes-backend` |
-| Weekly | System updates | `sudo apt update && sudo apt upgrade -y` |
-| Weekly | Database backup | `mongodump --out /mnt/brainbytes-data/backups/$(date +%Y%m%d)` |
-| Monthly | Audit SSH attempts | `sudo journalctl -u sshd \| grep "Failed password" \| wc -l` |
+| Frequency | Task | How |
+|-----------|------|-----|
+| Daily | Check logs | Railway dashboard → service → Logs tab |
+| Weekly | Check deployments | Railway dashboard → Deployments tab |
+| Weekly | Database backup | Railway MongoDB plugin → Backups → Create |
+| Monthly | Review environment variables | Railway dashboard → Variables tab |
 
 ### Incident Response
 
-1. **Service down**: SSH into instance → `docker compose ps` to check containers
-2. **High memory**: `docker stats` → restart the offending container
-3. **Disk full**: `du -sh /mnt/brainbytes-data/*` → archive old logs/backups
-4. **Database corruption**: Restore from latest backup
+1. **Service down**: Check Railway dashboard → service status → view logs
+2. **High memory**: Railway auto-restarts; check Memory graph in dashboard
+3. **Build failure**: View build logs in Railway dashboard → Deployments
+4. **Database corruption**: Railway MongoDB plugin → Backups → Restore
 
 ### Backup and Recovery
 
-```bash
-# Full database backup
-mongodump --out /mnt/brainbytes-data/backups/$(date +%Y%m%d_%H%M%S)
-
-# Restore
-mongorestore --drop /mnt/brainbytes-data/backups/<backup_date>
-```
+- MongoDB backups are handled by Railway's managed plugin
+- To create a manual backup: Railway dashboard → MongoDB → Backups → **Create Backup**
+- To restore: Select a backup → **Restore**
+- Backups are stored in Railway's infrastructure (no manual disk management)
 
 ### Monitoring Procedures
 
-- **Monitor.sh** runs every 5 minutes via cron
-- Alerts logged to `/mnt/brainbytes-data/logs/monitor.log`
-- Check `sudo journalctl -u docker` for container issues
-- Check `df -h` for disk space weekly
+- **Railway dashboard**: Real-time CPU, memory, and response time graphs
+- **Service logs**: Accessible per-service in Railway dashboard
+- **Deployment history**: Track all deployments with rollback capability
+- **Health checks**: Railway automatically monitors and restarts unhealthy services
 
 ---
 
@@ -251,17 +252,20 @@ mongorestore --drop /mnt/brainbytes-data/backups/<backup_date>
 
 ### Free Tier Tracking
 
+Railway.app offers free tier with the following limits:
+
 | Resource | Free Tier Limit | BrainBytes Usage |
 |----------|----------------|------------------|
-| Compute | 2 instances (AMD) | 1 instance |
-| Block Volume | 200 GB total | 50 GB |
-| Object Storage | 10 GB | Not used |
-| Bandwidth | 10 TB/month | Minimal (text-based app) |
+| Projects | Unlimited | 1 project |
+| Deployments | Unlimited | Auto-deploy on push |
+| Bandwidth | 1 GB/month (free tier) | Well within limit (text-based) |
+| Build minutes | 500 hours/month | Minimal |
+| MongoDB | 1 instance (free) | 1 database |
 
 ### Optimization Strategies
 
-- **Docker layer caching**: Reduces build time and bandwidth
-- **Log rotation**: Prevents logs from filling disk
-- **Database indexing**: Optimizes query performance
-- **Static asset optimization**: Next.js automatically optimizes images and JS bundles
-- **Text-based responses**: AI responses are text, minimizing bandwidth
+- **Text-based responses**: AI responses are text, minimizing bandwidth usage
+- **Efficient builds**: Railway caches layers between builds
+- **No unused services**: Only 3 services (frontend, backend, MongoDB)
+- **Static optimization**: Next.js automatically optimizes bundles
+- **Database indexing**: Proper indexes on MongoDB collections for efficiency

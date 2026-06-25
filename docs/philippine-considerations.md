@@ -127,20 +127,15 @@ The BrainBytes AI tutoring platform handles educational data in compliance with 
 
 ## 4. Infrastructure Placement
 
-### OCI Region Selection
+### Railway.app Region Selection
 
-| Factor | Decision | Rationale |
-|--------|----------|-----------|
-| Region | AP-Singapore | Closest Oracle Cloud region to Philippines |
-| Latency | ~30-50ms from Manila | Acceptable for text-based AI tutoring |
-| Availability | 3 availability domains | High reliability |
+Railway.app automatically deploys to the closest available region. For Philippine users:
 
-### Alternative Regions
-
-If AP-Singapore is unavailable:
-- **AP-Tokyo** — ~80ms from Philippines
-- **AP-Mumbai** — ~100ms from Philippines
-- **US-West (Phoenix)** — ~180ms from Philippines (not recommended)
+| Factor | Detail |
+|--------|--------|
+| Platform | Railway.app (global infrastructure) |
+| Latency | Auto-routed to nearest region |
+| Reliability | Built-in load balancing and auto-scaling |
 
 ---
 
