@@ -1,0 +1,28 @@
+services:
+  mongo-test:
+    image: mongo:4.4
+    restart: unless-stopped
+
+  backend-test:
+    build: ./backend
+    command: sh -c "npm install && npm test"
+    environment:
+      - MONGO_URL=mongodb://mongo-test:27017/brainbytes_test
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - mongo-test
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+
+  frontend-test:
+    build: ./frontend
+    command: sh -c "npm install && npm test"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend-test:3000
+    depends_on:
+      - backend-test
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules

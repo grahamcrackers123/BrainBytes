@@ -1,0 +1,37 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Railway.app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy Backend to Railway
+        working-directory: ./brainbytes-multi-container/backend
+        run: railway up --service brainbytes-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy Frontend to Railway
+        working-directory: ./brainbytes-multi-container/frontend
+        run: railway up --service brainbytes-frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Verify deployments
+        run: |
+          echo "Deployment triggered successfully"
+          echo "Check Railway dashboard for status:"
+          echo "https://railway.app/project/$(railway project list --json | jq -r '.[0].id')"
