@@ -36,9 +36,11 @@ BrainBytes uses GitHub Actions for continuous integration and deployment. The CI
 - **Retries**: Failed tests are automatically retried
 
 ### 6. Deploy (`deploy`)
-- **Purpose**: Deploy to test environment
-- **Triggers**: After build and e2e tests pass
-- **Current**: Placeholder for future Oracle Cloud deployment
+- **Purpose**: Deploy to Oracle Cloud test environment
+- **Triggers**: After build and e2e tests pass (push events only, not PRs)
+- **Branch targeting**: `main` → staging, `mj-automation` → test
+- **Script**: `scripts/deploy.sh` — builds, pulls, and restarts Docker Compose services
+- **Health check**: Verifies frontend (port 7000) and backend API (port 5000) respond
 
 ## How to Run Manually
 
@@ -62,6 +64,9 @@ The following secrets must be configured in **Settings > Secrets and variables >
 |--------|---------|
 | `SNYK_TOKEN` | Snyk API token for vulnerability scanning |
 | `GROQ_API_KEY` | API key for Groq AI service (for local testing) |
+| `OCI_HOST` | Oracle Cloud instance public IP address |
+| `OCI_SSH_KEY` | SSH private key for OCI instance authentication |
+| `OCI_USER` | SSH username for OCI instance (typically `ubuntu`) |
 
 ## Troubleshooting
 
@@ -77,3 +82,9 @@ Ensure Docker Compose starts all services. Check that port 7000 is mapped correc
 
 ### Slow builds
 The pipeline uses GitHub Actions cache for npm dependencies and Docker layers. If builds are slow, check cache hit rates in the workflow logs.
+
+### Oracle Cloud deployment fails
+- **SSH connection refused**: Verify `OCI_HOST` IP is correct and security list allows SSH from GitHub Actions IPs
+- **Docker not found**: Ensure Docker is installed on OCI instance (`sudo apt install docker.io docker-compose-v2`)
+- **Permission denied**: Confirm `OCI_SSH_KEY` has correct permissions and matches the instance's `authorized_keys`
+- **Container exits immediately**: Check container logs with `docker logs <container_name>` on the OCI instance
