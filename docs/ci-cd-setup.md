@@ -36,11 +36,12 @@ BrainBytes uses GitHub Actions for continuous integration and deployment. The CI
 - **Retries**: Failed tests are automatically retried
 
 ### 6. Deploy (`deploy`)
-- **Purpose**: Deploy to Oracle Cloud test environment
+- **Purpose**: Deploy to Railway.app test environment
 - **Triggers**: After build and e2e tests pass (push events only, not PRs)
-- **Branch targeting**: `main` → staging, `mj-automation` → test
-- **Script**: `scripts/deploy.sh` — builds, pulls, and restarts Docker Compose services
-- **Health check**: Verifies frontend (port 7000) and backend API (port 5000) respond
+- **Branch targeting**: `main` → production, `mj-automation` → test
+- **Script**: `scripts/deploy.sh` — builds, pulls, and restarts Docker Compose services (for local testing)
+- **Railway deploy**: Automatic via GitHub integration or `deploy-railway.yml` workflow
+- **Health check**: Frontend and backend are health-checked by Railway automatically
 
 ## How to Run Manually
 
@@ -64,9 +65,7 @@ The following secrets must be configured in **Settings > Secrets and variables >
 |--------|---------|
 | `SNYK_TOKEN` | Snyk API token for vulnerability scanning |
 | `GROQ_API_KEY` | API key for Groq AI service (for local testing) |
-| `OCI_HOST` | Oracle Cloud instance public IP address |
-| `OCI_SSH_KEY` | SSH private key for OCI instance authentication |
-| `OCI_USER` | SSH username for OCI instance (typically `ubuntu`) |
+| `RAILWAY_TOKEN` | Railway API token for automated deployments |
 
 ## Troubleshooting
 
@@ -83,8 +82,8 @@ Ensure Docker Compose starts all services. Check that port 7000 is mapped correc
 ### Slow builds
 The pipeline uses GitHub Actions cache for npm dependencies and Docker layers. If builds are slow, check cache hit rates in the workflow logs.
 
-### Oracle Cloud deployment fails
-- **SSH connection refused**: Verify `OCI_HOST` IP is correct and security list allows SSH from GitHub Actions IPs
-- **Docker not found**: Ensure Docker is installed on OCI instance (`sudo apt install docker.io docker-compose-v2`)
-- **Permission denied**: Confirm `OCI_SSH_KEY` has correct permissions and matches the instance's `authorized_keys`
-- **Container exits immediately**: Check container logs with `docker logs <container_name>` on the OCI instance
+### Railway deployment fails
+- **RAILWAY_TOKEN expired**: Generate a new token at https://railway.app/account/tokens
+- **Build fails**: Check Railway build logs in the dashboard
+- **Health check failing**: Verify the service starts correctly locally with `docker compose up`
+- **Environment variables missing**: Ensure all required vars are set in Railway dashboard

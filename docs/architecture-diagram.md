@@ -1,78 +1,73 @@
 # BrainBytes Deployment Architecture
 
+## System Architecture Overview
+
 ```mermaid
-graph TD
-    subgraph "Developer Workflow"
-        DEV[Developer] -->|git push| GH[GitHub Repository]
+graph LR
+    subgraph "Developer"
+        DEV[Developer]
+        GIT[GitHub Repo]
     end
 
-    subgraph "GitHub Actions CI/CD Pipeline"
-        GH -->|trigger| LINT[Lint & Format]
-        LINT -->|pass| TEST[Run Tests]
-        TEST -->|pass| BUILD[Build Docker Images]
-        BUILD -->|pass| E2E[E2E Tests]
-        BUILD -->|pass| SEC[Security Scan]
-        E2E -->|pass| DEPLOY[Deploy to OCI]
+    subgraph "GitHub Actions"
+        CI[CI/CD Pipeline<br/>Lint → Test → Build → E2E → Security]
     end
 
-    subgraph "Oracle Cloud Infrastructure (AP-Singapore)"
-        subgraph "VCN - 10.0.0.0/16"
-            subgraph "Public Subnet - 10.0.1.0/24"
-                INSTANCE[VM.Standard.E2.1.Micro<br/>1 OCPU · 1 GB RAM · Ubuntu 22.04]
-            end
+    subgraph "Railway.app Cloud Platform"
+        subgraph "Backend Service"
+            BE[Express API<br/>Port 3000<br/>node:18-alpine]
         end
-
-        subgraph "Security Layer"
-            UFW[UFW Firewall<br/>Ports: 22, 80, 443, 3000]
-            SSH[SSH Keys Only]
-            FB[Fail2Ban]
-            AUTO[Auto Updates]
+        subgraph "Frontend Service"
+            FE[Next.js App<br/>Port 3000<br/>node:18-alpine]
         end
-
-        subgraph "Docker Containers"
-            FE[Frontend<br/>Next.js :80]
-            BE[Backend<br/>Express :3000]
-            DB[(MongoDB 7<br/>:27017)]
-        end
-
-        subgraph "Persistent Storage - 50 GB Block Volume"
-            MONGO_DATA[mongodb/]
-            LOGS[logs/]
-            BACKUPS[backups/]
+        subgraph "MongoDB Plugin"
+            DB[(MongoDB 7<br/>Persistent Storage)]
         end
     end
 
-    subgraph "External Services"
+    subgraph "External"
         GROQ[Groq AI API]
-        SNYK[Snyk Scanner]
     end
 
-    DEPLOY -->|SCP Docker Images| INSTANCE
-    INSTANCE --> FE
-    FE -->|HTTP| BE
-    BE -->|Database| DB
-    BE -->|API Call| GROQ
-    MONGO_DATA --> DB
-    LOGS --> INSTANCE
-    BUILD -->|image scan| SNYK
+    DEV -->|git push| GIT
+    GIT -->|trigger| CI
+    CI -->|deploy| BE
+    CI -->|deploy| FE
+    FE -->|HTTP / API calls| BE
+    BE -->|Mongoose| DB
+    BE -->|HTTPS| GROQ
 ```
 
-## Component Relationships
-
-| Component | Connects To | Protocol | Purpose |
-|-----------|------------|----------|---------|
-| User's Browser | Frontend (:80) | HTTPS | Web UI |
-| Frontend (Next.js) | Backend (:3000) | HTTP | API calls |
-| Backend (Express) | MongoDB (:27017) | MongoDB Wire | Data persistence |
-| Backend (Express) | Groq API | HTTPS | AI responses |
-| GitHub Actions | OCI Instance | SSH/SCP | Deployment |
-
-## Network Flow
+## Data Flow
 
 ```
-Internet → [Security List: 80, 443, 3000] → UFW → Docker Containers
-                                                            ↓
-                                              Block Volume (50 GB)
-                                                    ↓
-                                         MongoDB Data / Logs / Backups
+User's Browser
+      │
+      ▼
+Railway Frontend (Next.js) ───→ Railway Backend (Express) ───→ Railway MongoDB
+      │                              │
+      │                              ▼
+      │                         Groq AI API
+      │
+  Auto SSL        Internal Network       Managed Database
+  (Railway)       (Railway DNS)          (Railway Plugin)
 ```
+
+## Service Communication
+
+| From | To | Protocol | How |
+|------|----|----------|-----|
+| Browser | Frontend | HTTPS | Railway auto-provides URL + SSL |
+| Frontend | Backend | HTTP | Railway internal URL env var |
+| Backend | MongoDB | MongoDB Wire | Railway plugin connection string |
+| Backend | Groq API | HTTPS | External API call |
+
+## Security Layers
+
+| Layer | Protection |
+|-------|------------|
+| Transport | Auto SSL/HTTPS (Railway-managed) |
+| Secrets | Encrypted env vars (Railway) |
+| Network | Internal service networking (no public DB) |
+| API | Input validation in Express routes |
+| CORS | Restricted to frontend origin in production |

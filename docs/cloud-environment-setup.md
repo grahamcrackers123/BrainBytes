@@ -1,367 +1,272 @@
-# BrainBytes Cloud Environment Setup — Oracle Cloud
+# BrainBytes Cloud Environment Setup — Railway.app
 
 ## Overview
 
-BrainBytes is deployed on **Oracle Cloud Infrastructure (OCI)** using the Always Free Tier. This document details the setup, security hardening, monitoring, and storage configuration for the production environment.
+BrainBytes is deployed on **Railway.app** using its free tier. Railway is a cloud platform that simplifies deployment by automatically building and deploying from a GitHub repository, handling networking, SSL, and scaling automatically.
 
 ---
 
-## 1. Compute Instance Setup
+## 1. Railway.app Project Setup
 
-### Instance Specifications
+### Step 1: Create a Railway Account
 
-| Property | Value |
-|----------|-------|
-| Shape | VM.Standard.E2.1.Micro (AMD) |
-| OCPU | 1 |
-| RAM | 1 GB |
-| Boot Volume | Up to 200 GB (Always Free) |
-| OS | Ubuntu 22.04 LTS Minimal |
-| Region | AP-Singapore (for lowest latency to Philippines) |
+1. Go to https://railway.app/
+2. Click **Login** → **Continue with GitHub**
+3. Authorize Railway to access your GitHub account
 
-### Initial Setup Steps
+### Step 2: Create Project from GitHub
 
-```bash
-# Connect via SSH (key-based only)
-ssh -i ~/.ssh/brainbytes-key ubuntu@<PUBLIC_IP>
+1. Click **New Project** → **Deploy from GitHub repo**
+2. Select `grahamcrackers123/BrainBytes`
+3. Configure the services:
 
-# Update all system packages
-sudo apt update && sudo apt upgrade -y
+| Service | Root Directory | Build Command | Start Command |
+|---------|---------------|---------------|---------------|
+| Backend | `brainbytes-multi-container/backend` | `npm install` | `npm start` |
+| Frontend | `brainbytes-multi-container/frontend` | `npm install && npm run build` | `npm run start` |
+| MongoDB | Use Railway's **Add Plugin** → **MongoDB** | — | — |
 
-# Install Docker and Docker Compose
-sudo apt install -y docker.io docker-compose-v2
-sudo systemctl enable --now docker
-sudo usermod -aG docker ubuntu
+### Step 3: Configure Health Checks
 
-# Install Node.js 22.x for build
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-```
+For each service in Railway dashboard → **Settings** → **Health Checks**:
 
----
+| Service | Path | Period | Threshold |
+|---------|------|--------|-----------|
+| Backend | `/` | 30s | 3 failures |
+| Frontend | `/` | 30s | 3 failures |
 
-## 2. Security Hardening
+### Step 4: Configure Automatic Restarts
 
-### 2.1 Firewall Rules (iptables/UFW)
-
-```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22/tcp comment 'SSH'
-sudo ufw allow 80/tcp comment 'HTTP'
-sudo ufw allow 443/tcp comment 'HTTPS'
-sudo ufw allow 3000/tcp comment 'Backend API'
-
-# Restrict SSH to known IPs if possible
-sudo ufw allow from <YOUR_HOME_IP> to any port 22
-sudo ufw --force enable
-```
-
-### 2.2 OCI Security List (VNC Firewall)
-
-Configure in OCI Console → Networking → Security Lists:
-
-| Direction | Source/Dest | Protocol | Port | Purpose |
-|-----------|-------------|----------|------|---------|
-| Ingress | 0.0.0.0/0 | TCP | 22 | SSH |
-| Ingress | 0.0.0.0/0 | TCP | 80 | HTTP |
-| Ingress | 0.0.0.0/0 | TCP | 443 | HTTPS |
-| Ingress | 0.0.0.0/0 | TCP | 3000 | Backend API |
-| Egress | 0.0.0.0/0 | All | All | Outbound access |
-
-### 2.3 SSH Hardening
-
-```bash
-# Edit /etc/ssh/sshd_config
-sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-sudo sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sudo sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
-```
-
-### 2.4 Automatic Security Updates
-
-```bash
-sudo apt install -y unattended-upgrades
-sudo dpkg-reconfigure --priority=low unattended-upgrades
-# Choose "Yes" to enable automatic updates
-```
-
-### 2.5 Fail2Ban
-
-```bash
-sudo apt install -y fail2ban
-sudo systemctl enable --now fail2ban
-```
+In **Settings** → **Restart Policy**:
+- Set to **Always** for all services
+- Railway automatically restarts crashed containers
 
 ---
 
-## 3. Block Volume Setup (Persistent Storage)
+## 2. Environment Variables
 
-### 3.1 Create Block Volume
+Add these in Railway dashboard → **Variables** for each service:
 
-1. OCI Console → Storage → Block Volumes
-2. Click **Create Block Volume**
-3. Name: `brainbytes-data`
-4. Size: **50 GB** (within free tier)
-5. Availability Domain: Same as compute instance
-6. Click **Create**
+### Backend Variables
 
-### 3.2 Attach to Instance
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `GROQ_API_KEY` | *(your key)* | AI service authentication |
+| `MONGO_URL` | `$(RAILWAY_MONGODB_URL)/brainbytes` | MongoDB connection (Railway provides the URL) |
+| `NODE_ENV` | `production` | Production mode |
+| `PORT` | `3000` | Express server port |
 
-1. Click the block volume → **Attach**
-2. Attachment type: **ISCSI** or **Paravirtualized**
-3. Select your compute instance
-4. Copy the iSCSI commands to attach
+### Frontend Variables
 
-### 3.3 Format and Mount
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `NEXT_PUBLIC_API_URL` | `$(BACKEND_URL)` | Backend API URL (Railway provides this) |
+| `PORT` | `3000` | Next.js server port |
 
-```bash
-# Run the iSCSI attach commands from OCI Console, then:
-lsblk  # Identify the new disk (e.g., /dev/sdb)
-
-# Format as ext4
-sudo mkfs.ext4 /dev/sdb
-
-# Create mount point
-sudo mkdir -p /mnt/brainbytes-data
-
-# Mount the volume
-sudo mount /dev/sdb /mnt/brainbytes-data
-
-# Configure auto-mount on reboot
-echo '/dev/sdb /mnt/brainbytes-data ext4 defaults,_netdev,nofail 0 2' | sudo tee -a /etc/fstab
-
-# Set permissions
-sudo chown -R ubuntu:ubuntu /mnt/brainbytes-data
-```
-
-### 3.4 Configure for Application Data
-
-```bash
-# Create application data directories
-mkdir -p /mnt/brainbytes-data/mongodb
-mkdir -p /mnt/brainbytes-data/logs
-mkdir -p /mnt/brainbytes-data/backups
-
-# Update docker-compose.yml to use persistent volumes
-# Add: - /mnt/brainbytes-data/mongodb:/data/db
-```
+> **Note**: Railway auto-generates `RAILWAY_MONGODB_URL` and `BACKEND_URL` environment variables when you link services. No need to manually enter them.
 
 ---
 
-## 4. System Monitoring
+## 3. Security Configuration
 
-### 4.1 Install Monitoring Tools
+### 3.1 Sensitive Environment Variables
 
-```bash
-# Install htop, iotop, nmon for system monitoring
-sudo apt install -y htop iotop nmon net-tools
+- All secrets stored in Railway's encrypted environment variable system
+- Never committed to GitHub (`.env` files in `.gitignore`)
+- `GROQ_API_KEY` is the only external secret
 
-# Install Prometheus Node Exporter for OCI monitoring
-wget https://github.com/prometheus/node_exporter/releases/latest/download/node_exporter-1.8.2.linux-amd64.tar.gz
-tar xvf node_exporter-*.tar.gz
-sudo mv node_exporter-*/node_exporter /usr/local/bin/
-sudo useradd -rs /bin/false node_exporter
+### 3.2 CORS Configuration
 
-# Create systemd service
-sudo tee /etc/systemd/system/node_exporter.service << EOF
-[Unit]
-Description=Node Exporter
-Wants=network-online.target
-After=network-online.target
+The backend already has CORS configured in `server.js`:
 
-[Service]
-User=node_exporter
-Group=node_exporter
-Type=simple
-ExecStart=/usr/local/bin/node_exporter
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now node_exporter
+```js
+app.use(cors());
 ```
 
-### 4.2 Log Rotation
+For production, you can restrict CORS to specific origins in Railway:
 
-```bash
-# Configure log rotation for Docker containers
-sudo tee /etc/logrotate.d/docker-containers << EOF
-/var/lib/docker/containers/*/*.log {
-    rotate 7
-    daily
-    compress
-    missingok
-    delaycompress
-    copytruncate
-    maxsize 50M
-}
-EOF
-
-# Configure log rotation for application logs
-sudo tee /etc/logrotate.d/brainbytes-app << EOF
-/mnt/brainbytes-data/logs/*.log {
-    rotate 14
-    daily
-    compress
-    missingok
-    notifempty
-    maxsize 10M
-}
-EOF
+```js
+const cors = require('cors');
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 ```
 
-### 4.3 Health Check Monitoring Script
+Add `CORS_ORIGIN=https://your-app.railway.app` to backend environment variables.
 
-```bash
-# Create monitoring script
-cat > /home/ubuntu/monitor.sh << 'SCRIPT'
-#!/bin/bash
-# BrainBytes Health Monitoring Script
-# Runs via cron every 5 minutes
+### 3.3 Network Security
 
-LOG_FILE="/mnt/brainbytes-data/logs/monitor.log"
-DATE=$(date '+%Y-%m-%d %H:%M:%S')
+Railway provides:
+- **Auto-generated SSL/HTTPS** for all deployments
+- **Private networking** between services (via internal DNS)
+- **No public port exposure** for MongoDB (only accessible from other Railway services)
 
-# Check if Docker is running
-if ! systemctl is-active --quiet docker; then
-    echo "$DATE [ERROR] Docker is not running" >> $LOG_FILE
-    sudo systemctl start docker
-fi
+---
 
-# Check container health
-for container in brainbytes-frontend brainbytes-backend brainbytes-mongo; do
-    if ! docker ps --format '{{.Names}}' | grep -q "$container"; then
-        echo "$DATE [WARN] Container $container is down, restarting..." >> $LOG_FILE
-        cd /home/ubuntu/brainbytes && docker compose up -d
-        break
-    fi
-done
+## 4. Monitoring and Logging
 
-# Check disk usage
-USAGE=$(df /mnt/brainbytes-data | tail -1 | awk '{print $5}' | sed 's/%//')
-if [ "$USAGE" -gt 80 ]; then
-    echo "$DATE [WARN] Disk usage at ${USAGE}%" >> $LOG_FILE
-fi
+### 4.1 Railway Built-in Logging
 
-# Check memory usage
-MEM=$(free | grep Mem | awk '{print int($3/$2 * 100)}')
-if [ "$MEM" -gt 90 ]; then
-    echo "$DATE [WARN] Memory usage at ${MEM}%" >> $LOG_FILE
-fi
+Railway provides real-time logs for each service:
 
-# API health check
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" != "200" ]; then
-    echo "$DATE [ERROR] Backend API returned $HTTP_CODE" >> $LOG_FILE
-fi
+```
+railway logs           # View all logs
+railway logs --service backend    # Backend logs only
+railway logs --tail    # Follow logs in real-time
+```
 
-echo "$DATE [INFO] Health check complete" >> $LOG_FILE
-SCRIPT
+### 4.2 Application-Level Logging
 
-chmod +x /home/ubuntu/monitor.sh
+The backend already logs errors to console:
 
-# Add to crontab
-(crontab -l 2>/dev/null; echo "*/5 * * * * /home/ubuntu/monitor.sh") | crontab -
+```js
+console.error('Error fetching messages:', err);
+```
+
+Railway automatically captures stdout/stderr from each container.
+
+### 4.3 Error Tracking
+
+To add basic error tracking:
+
+```js
+// server.js — catch unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED REJECTION:', reason);
+});
+```
+
+### 4.4 Performance Monitoring
+
+Railway provides:
+- **CPU & Memory usage graphs** per service
+- **Deployment history** with rollback capability
+- **Response time metrics** (with custom domains)
+
+---
+
+## 5. Deployment Configuration
+
+### 5.1 Railway Project Structure
+
+```
+BrainBytes/
+├── brainbytes-multi-container/
+│   ├── backend/
+│   │   ├── Dockerfile          # Already exists
+│   │   ├── package.json
+│   │   └── ...
+│   ├── frontend/
+│   │   ├── Dockerfile          # Already exists
+│   │   ├── package.json
+│   │   └── ...
+│   └── docker-compose.yml      # For local dev
+├── .github/
+│   └── workflows/
+│       └── deploy-railway.yml  # Railway deployment workflow
+```
+
+### 5.2 Railway GitHub Integration
+
+Railway automatically deploys when you push to `main`:
+1. Connect your GitHub repo to Railway
+2. Select the `main` branch for auto-deploy
+3. Railway builds using the Dockerfile or Nixpacks
+
+### 5.3 nixpacks.toml (for better build control)
+
+Create `brainbytes-multi-container/backend/nixpacks.toml`:
+
+```toml
+[phases.setup]
+nixPkgs = ['nodejs_22', 'curl']
+
+[phases.install]
+cmds = ['npm install']
+
+[phases.build]
+cmds = ['echo "No build step needed"']
+
+[start]
+cmd = 'npm start'
+```
+
+Create `brainbytes-multi-container/frontend/nixpacks.toml`:
+
+```toml
+[phases.setup]
+nixPkgs = ['nodejs_22']
+
+[phases.install]
+cmds = ['npm install --legacy-peer-deps']
+
+[phases.build]
+cmds = ['npm run build']
+
+[start]
+cmd = 'npm run start'
 ```
 
 ---
 
-## 5. Docker Compose Deployment
+## 6. Service Configuration
 
-### Production docker-compose.yml
+### 6.1 Backend Service
 
-```yaml
-# docker-compose.prod.yml
-version: '3'
+| Setting | Configuration |
+|---------|--------------|
+| Source | `brainbytes-multi-container/backend` |
+| Build | Dockerfile or Nixpacks |
+| Port | 3000 |
+| Health Check | `GET /` |
+| Restart Policy | Always |
 
-services:
-  mongo:
-    image: mongo:7
-    restart: unless-stopped
-    volumes:
-      - /mnt/brainbytes-data/mongodb:/data/db
-    ports:
-      - "127.0.0.1:27017:27017"  # Not exposed publicly
+### 6.2 Frontend Service
 
-  backend:
-    image: brainbytes-backend:latest
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - MONGO_URL=mongodb://mongo:27017/brainbytes
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - NODE_ENV=production
-      - PORT=3000
-    depends_on:
-      - mongo
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+| Setting | Configuration |
+|---------|--------------|
+| Source | `brainbytes-multi-container/frontend` |
+| Build | Dockerfile or Nixpacks |
+| Port | 3000 |
+| Health Check | `GET /` |
+| Restart Policy | Always |
 
-  frontend:
-    image: brainbytes-frontend:latest
-    restart: unless-stopped
-    ports:
-      - "80:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3000
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
+### 6.3 MongoDB Plugin
+
+| Setting | Configuration |
+|---------|--------------|
+| Plugin | MongoDB |
+| Version | 7.0+ |
+| Persistent | Yes (Railway-managed) |
+| Internal Port | 27017 |
 
 ---
 
-## 6. Domain & SSL (Optional)
+## 7. Custom Domain (Optional)
 
-```bash
-# Install Nginx as reverse proxy for SSL termination
-sudo apt install -y nginx certbot python3-certbot-nginx
-
-# Configure Nginx
-sudo tee /etc/nginx/sites-available/brainbytes << 'NGINX'
-server {
-    listen 80;
-    server_name brainbytes.yourdomain.com;
-
-    location / {
-        proxy_pass http://localhost:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-NGINX
-
-sudo ln -s /etc/nginx/sites-available/brainbytes /etc/nginx/sites-enabled/
-sudo certbot --nginx -d brainbytes.yourdomain.com
-```
+1. Railway dashboard → **Settings** → **Custom Domain**
+2. Add your domain (e.g., `brainbytes.yourdomain.com`)
+3. Update your DNS `CNAME` record to point to Railway's domain
+4. Railway auto-provisions SSL certificate
 
 ---
 
-## 7. Verification Checklist
+## 8. Verification Checklist
 
-- [ ] SSH key-based authentication only (no password)
-- [ ] UFW firewall enabled with restricted ports
-- [ ] Automatic security updates configured
-- [ ] Fail2Ban installed and running
-- [ ] Block volume attached, formatted, and mounted
-- [ ] Block volume added to `/etc/fstab` for persistence
-- [ ] Docker and Docker Compose installed
-- [ ] Log rotation configured
-- [ ] Monitoring script deployed and cron job active
-- [ ] All application containers healthy
-- [ ] SSL certificate issued (if using custom domain)
+- [ ] Railway project created and connected to GitHub
+- [ ] Backend service deploys successfully
+- [ ] Frontend service deploys successfully
+- [ ] MongoDB plugin added and connected
+- [ ] Environment variables configured in all services
+- [ ] Health checks enabled and passing
+- [ ] Restart policy set to "Always"
+- [ ] CORS configured for production origin
+- [ ] Auto-deploy on `main` branch enabled
+- [ ] Logs visible in Railway dashboard
+- [ ] Application accessible via Railway URL

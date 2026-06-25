@@ -7,7 +7,7 @@
 | GitHub repository with tests | ✅ | https://github.com/grahamcrackers123/BrainBytes |
 | Enhanced frontend & backend tests | ✅ | `frontend/tests/`, `backend/tests/` (51 tests) |
 | Updated GitHub Actions workflow | ✅ | `.github/workflows/main.yml` |
-| Oracle Cloud deploy workflow | ✅ | `.github/workflows/deploy-oci.yml` |
+| Railway deploy workflow | ✅ | `.github/workflows/deploy-railway.yml` |
 | CI/CD documentation | ✅ | `docs/ci-cd-setup.md` |
 | Testing documentation | ✅ | `docs/testing-guide.md` |
 | Testing strategy & challenges | ✅ | `docs/testing-strategy-submission.md` |
@@ -36,30 +36,26 @@
 - Screenshot showing ESLint annotations in the workflow
 - **Saved to**: `C:\Users\Administrator\AppData\Local\Temp\opencode\eslint-output.png`
 
-### 4. OCI Dashboard (to be captured after setup)
-- Navigate to OCI Console → Compute → Instances
-- Screenshot showing the running instance
-- **Not yet captured** — requires OCI account setup
-
-### 5. OCI Block Volume
-- Navigate to OCI Console → Storage → Block Volumes
-- Screenshot showing the 50 GB volume attached to instance
+### 4. Railway Dashboard
+- Navigate to https://railway.app/dashboard
+- Screenshot showing the deployed services (Backend, Frontend, MongoDB)
+- **Capture after deploying via Railway**
 
 ---
 
-## OCI Setup Steps (Manual)
+## Railway Setup Steps
 
-1. **Create OCI Free Tier account** at https://www.oracle.com/cloud/free/
-2. **Launch compute instance**: VM.Standard.E2.1.Micro, Ubuntu 22.04, AP-Singapore
-3. **Upload SSH key** during instance creation
-4. **Configure security list**: Open ports 22, 80, 443, 3000
-5. **Create 50 GB block volume** and attach to instance
-6. **Run setup script** from `docs/cloud-environment-setup.md`
-7. **Configure secrets** in GitHub:
-   - `OCI_HOST`: Instance public IP
-   - `OCI_SSH_KEY`: Private SSH key content
-   - `OCI_USER`: `ubuntu`
-8. **Push to `main`** to trigger deployment
+1. **Create Railway account** at https://railway.app/ (login with GitHub)
+2. **Create a new project** → **Deploy from GitHub repo**
+3. **Add services**:
+   - Backend: `brainbytes-multi-container/backend`
+   - Frontend: `brainbytes-multi-container/frontend`
+   - MongoDB: Add Plugin → MongoDB
+4. **Configure environment variables** for each service (see `cloud-environment-setup.md`)
+5. **Enable health checks** in service settings
+6. **Generate Railway token**: https://railway.app/account/tokens
+7. **Add `RAILWAY_TOKEN` secret** to GitHub repository
+8. **Push to `main`** to trigger automatic deployment
 
 ---
 
