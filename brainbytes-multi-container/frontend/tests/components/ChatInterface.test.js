@@ -5,6 +5,8 @@ import ChatInterface from '../../components/ChatInterface';
 
 beforeEach(() => {
   global.fetch = jest.fn();
+  Element.prototype.scrollIntoView = jest.fn();
+  Element.prototype.scrollTo = jest.fn();
 });
 
 afterEach(() => {
