@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
 export default function Dashboard() {
   const [messages, setMessages] = useState([]);

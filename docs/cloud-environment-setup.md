@@ -52,9 +52,14 @@ Add these in Railway dashboard → **Variables** for each service:
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `GROQ_API_KEY` | *(your key)* | AI service authentication |
-| `MONGO_URL` | `$(RAILWAY_MONGODB_URL)/brainbytes` | MongoDB connection (Railway provides the URL) |
+| `MONGO_URL` | *(copy from RAILWAY_MONGODB_URL)* + `/brainbytes` | MongoDB connection (see note below) |
 | `NODE_ENV` | `production` | Production mode |
 | `PORT` | `3000` | Express server port |
+
+> **Important**: Do NOT use `$(RAILWAY_MONGODB_URL)/brainbytes` for `MONGO_URL`. The template variable `$(VAR)` interpolation does not work reliably. Instead:
+> 1. Look at the **auto-generated** `RAILWAY_MONGODB_URL` variable (Railway creates this when you add the MongoDB plugin)
+> 2. Copy its **actual value** (e.g., `mongodb://user:password@host:27017`)
+> 3. Set `MONGO_URL` to that value + `/brainbytes` (e.g., `mongodb://user:password@host:27017/brainbytes`)
 
 ### Frontend Variables
 
@@ -257,7 +262,58 @@ cmd = 'npm run start'
 
 ---
 
-## 8. Verification Checklist
+## 8. Troubleshooting Common Issues
+
+### "Connection problem detected" when chatting
+
+This means the frontend cannot reach the backend API. Check:
+
+1. **Is MONGO_URL set correctly?**
+   → `MongoParseError: Invalid scheme` = MONGO_URL is wrong
+   → `MongooseError: ... buffering timed out` = MongoDB not connected
+   → **Fix**: Copy the actual `RAILWAY_MONGODB_URL` value and set `MONGO_URL` to `<value>/brainbytes`
+   → Do NOT use `$(RAILWAY_MONGODB_URL)` — Railway interpolation may fail
+
+2. **Does NEXT_PUBLIC_API_URL have a trailing slash?**
+   → Should NOT end with `/`
+   → Wrong: `https://backend.url/` → causes `//api/messages`
+   → Correct: `https://backend.url`
+
+3. **Check backend logs in Railway dashboard**
+   → Should show: `Server running on port 3000`
+   → Should show: `Connected to MongoDB`
+   → If neither: check environment variables
+
+### Backend fails to start
+
+```
+MongoParseError: Invalid scheme
+→ MONGO_URL is not a valid MongoDB connection string
+→ Copy the value from RAILWAY_MONGODB_URL and use it literally
+
+Error: Cannot find module 'openai'
+→ Missing npm install — push code again to trigger rebuild
+
+GROQ_API_KEY is not set
+→ Add GROQ_API_KEY to backend environment variables
+```
+
+### Deploy to Railway workflow fails
+
+The `deploy-railway.yml` GitHub Actions workflow uses `railway up` via CLI.
+If it fails:
+
+- **RAILWAY_TOKEN expired**: Generate a new token at https://railway.app/account/tokens
+- **Build fails**: Check Railway build logs for the specific error
+
+**Recommended**: Use Railway's auto-deploy from GitHub instead:
+1. Railway dashboard → Project → Settings → GitHub
+2. Connect repo and enable auto-deploy on `main`
+3. Every push to `main` auto-deploys — no GitHub Actions needed
+
+---
+
+## 9. Verification Checklist
 
 - [ ] Railway project created and connected to GitHub
 - [ ] Backend service deploys successfully

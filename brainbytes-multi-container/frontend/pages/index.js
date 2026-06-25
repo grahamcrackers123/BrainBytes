@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
