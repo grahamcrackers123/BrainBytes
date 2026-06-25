@@ -18,20 +18,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy Backend to Railway
-        working-directory: ./brainbytes-multi-container/backend
-        run: railway up --service brainbytes-backend
+      - name: Deploy Backend
+        run: railway up --service brainbytes-backend --cwd ./brainbytes-multi-container/backend --ci
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Deploy Frontend to Railway
-        working-directory: ./brainbytes-multi-container/frontend
-        run: railway up --service brainbytes-frontend
+      - name: Deploy Frontend
+        run: railway up --service brainbytes-frontend --cwd ./brainbytes-multi-container/frontend --ci
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Verify deployments
-        run: |
-          echo "Deployment triggered successfully"
-          echo "Check Railway dashboard for status:"
-          echo "https://railway.app/project/$(railway project list --json | jq -r '.[0].id')"
