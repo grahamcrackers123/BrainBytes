@@ -11,35 +11,31 @@
 | CI/CD documentation | ✅ | `docs/ci-cd-setup.md` |
 | Testing documentation | ✅ | `docs/testing-guide.md` |
 | Testing strategy & challenges | ✅ | `docs/testing-strategy-submission.md` |
-| Cloud environment setup | ✅ | `docs/cloud-environment-setup.md` |
-| Deployment plan | ✅ | `docs/deployment-plan.md` |
-| Architecture diagram | ✅ | `docs/architecture-diagram.md` |
+| Cloud environment documentation | ✅ | `docs/cloud-environment-setup.md` |
+| Deployment plan document | ✅ | `docs/deployment-plan.md` |
+| Deployment Architecture diagram | ✅ | `docs/architecture-diagram.md` |
 | Philippine considerations | ✅ | `docs/philippine-considerations.md` |
 | Submission checklist | ✅ | This file |
 
 ---
 
-## Screenshots to Capture
+## Screenshots
 
 ### 1. Successful GitHub Actions Workflow Run
 - Navigate to: https://github.com/grahamcrackers123/BrainBytes/actions/runs/28177340244
-- Screenshot the full jobs list showing all green checkmarks
-- **Saved to**: `C:\Users\Administrator\AppData\Local\Temp\opencode\github-actions-success.png`
+- **Saved to**: https://drive.google.com/file/d/1DLiju-_PcgW2QUirZmqqdPiwfocPsVFf/view?usp=drive_link
 
 ### 2. Test Results Output
 - Navigate to: https://github.com/grahamcrackers123/BrainBytes/actions/runs/28177340244/job/83457344391#step:9:1
-- Screenshot showing "Tests: 51 passed" or the test summary
-- **Saved to**: `C:\Users\Administrator\AppData\Local\Temp\opencode\backend-test-results.png`
+- **Saved to**: https://drive.google.com/file/d/1dvMbqhiZsODhCoLlZD7j2w_EwzZe0KL1/view?usp=drive_link
 
 ### 3. ESLint Output
 - Navigate to: https://github.com/grahamcrackers123/BrainBytes/actions/runs/28177340244/job/83457198016#step:8:1
-- Screenshot showing ESLint annotations in the workflow
-- **Saved to**: `C:\Users\Administrator\AppData\Local\Temp\opencode\eslint-output.png`
+- **Saved to**: https://drive.google.com/file/d/1Xl0HjNUbMb_oqioWovdmQ_TXby8d8NWb/view?usp=drive_link
 
 ### 4. Railway Dashboard
 - Navigate to https://railway.app/dashboard
-- Screenshot showing the deployed services (Backend, Frontend, MongoDB)
-- **Capture after deploying via Railway**
+- **Capture after deploying via Railway**:https://drive.google.com/file/d/1-Q4P6y1RsZqZ0joQPu6a3gLDKFsAx8lr/view?usp=drive_link
 
 ---
 
