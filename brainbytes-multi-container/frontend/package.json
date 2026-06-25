@@ -8,7 +8,9 @@
     "start": "next start -p 3000 -H 0.0.0.0",
     "test": "jest --runInBand --forceExit",
     "lint": "eslint .",
-    "lint:js": "eslint ."
+    "lint:js": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "axios": "^0.24.0",
@@ -26,6 +28,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "globals": "^17.6.0"
+    "globals": "^17.6.0",
+    "prettier": "^3.5.0"
   }
 }

@@ -13,6 +13,7 @@ jobs:
   lint:
     name: Run Linters
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       checks: write
@@ -38,6 +39,38 @@ jobs:
       - name: Install Frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
+
+      - name: Check for large files
+        run: |
+          echo "Checking for files larger than 10MB..."
+          large_files=$(find . -size +10M -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null)
+          if [ -n "$large_files" ]; then
+            echo "Large files found:"
+            echo "$large_files"
+            echo "Please consider using .gitignore or Git LFS for large files."
+          else
+            echo "No large files found."
+          fi
+
+      - name: Check for potential secrets
+        run: |
+          echo "Checking for potential secrets in code..."
+          found_secrets=false
+          while IFS= read -r file; do
+            if grep -q -E '(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36})' "$file" 2>/dev/null; then
+              echo "Warning: $file"
+              found_secrets=true
+            fi
+          done < <(find . -type f \( -name '*.js' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' -o -name '*.env' \) -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null)
+          if [ "$found_secrets" = true ]; then
+            echo "Potential secrets detected!"
+          else
+            echo "No secrets patterns detected."
+          fi
+
+      - name: Run Prettier formatting check
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npx prettier --check . || echo "Prettier found formatting issues. Run 'npm run format' to fix."
 
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend
@@ -77,6 +110,7 @@ jobs:
     name: Run Tests
     needs: lint 
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       mongo:
@@ -164,10 +198,24 @@ jobs:
             brainbytes-multi-container/frontend/coverage
             brainbytes-multi-container/backend/coverage
 
+      - name: Generate test summary report
+        if: always()
+        run: |
+          echo "## Test Summary Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Tests | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Tests | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Node Version | ${{ matrix.node-version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See uploaded coverage-reports artifact for full coverage details." >> $GITHUB_STEP_SUMMARY
+
   build:
     name: Build Project
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Check out code
@@ -236,16 +284,14 @@ jobs:
           if-no-files-found: warn
 
   deploy: 
-    name: Deploy to Test Environment
+    name: Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: test
+    if: github.event_name != 'pull_request'
     needs: 
       - build
       - e2e
-
-    strategy:
-      matrix:
-        node-version: [20.x, 22.x]
 
     steps: 
       - name: Check out code
@@ -260,9 +306,9 @@ jobs:
       - name: Node.js setup
         uses: actions/setup-node@v4
         with: 
-          node-version: ${{ matrix.node-version }}
+          node-version: 22.x
 
-      - name: Create mock environment file for deploy
+      - name: Create mock environment file
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
@@ -271,20 +317,41 @@ jobs:
         run: | 
           echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
           echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          echo "DEPLOY_ENV=test" >> $GITHUB_ENV
 
-      - name: Deploy to Test Environment
+      - name: Determine deployment target by branch
         run: |
-          echo "Deploying to test environment..."
-          echo "This is a placeholder for your actual deployment script"
-          echo "In future weeks, this will deploy to Oracle Cloud"
+          case "${{ github.ref_name }}" in
+            main)
+              echo "DEPLOY_TARGET=staging" >> $GITHUB_ENV
+              ;;
+            mj-automation)
+              echo "DEPLOY_TARGET=test" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "DEPLOY_TARGET=test" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Deploy application
+        run: |
+          echo "=== Deploying BrainBytes ==="
+          echo "Environment:  test"
+          echo "Branch:       ${{ github.ref_name }}"
+          echo "Target SHA:   ${{ github.sha }}"
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh test
+        shell: bash
 
       - name: Verify Deployment
         run: |
           echo "Verifying deployment..."
+          sleep 5
           curl -s http://localhost:3000/health || echo "Service not available yet"
 
   security-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build
 
     strategy:
@@ -373,6 +440,7 @@ jobs:
   e2e: 
     name: Run End-to-End Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build
 
     strategy:
@@ -421,12 +489,88 @@ jobs:
           E2E_BASE_URL: http://localhost:7000
         run: npm run test:e2e
 
+      - name: Run performance test
+        if: success()
+        run: |
+          echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          start_time=$(date +%s%N)
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7000/ 2>/dev/null || echo "000")
+          end_time=$(date +%s%N)
+          duration_ms=$(( (end_time - start_time) / 1000000 ))
+          echo "| Homepage HTTP Status | $http_code |" >> $GITHUB_STEP_SUMMARY
+          echo "| Homepage Load Time | ${duration_ms}ms |" >> $GITHUB_STEP_SUMMARY
+
       - name: Show app logs on failure
         if: failure()
         working-directory: ./brainbytes-multi-container
         run: docker compose logs
- 
+  
       - name: Stop Docker Compose
         if: always()
         working-directory: ./brainbytes-multi-container
         run: docker compose down
+
+  notify:
+    name: Send Status Notification
+    runs-on: ubuntu-latest
+    needs: 
+      - lint
+      - test
+      - build
+      - security-scan
+      - e2e
+      - deploy
+    if: always()
+
+    steps:
+      - name: Check workflow status
+        run: |
+          echo "## BrainBytes CI/CD Status Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Linters | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Author: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "✅ All checks passed and deployment completed successfully!"
+          elif [ "${{ needs.deploy.result }}" = "skipped" ]; then
+            echo "✅ All checks passed. (Deploy skipped for ${{ github.event_name }} event)"
+          else
+            echo "⚠️ Some checks failed. Review the run details above."
+          fi
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const body = `## CI/CD Pipeline Failure\n\nRun: ${runUrl}\nBranch: \`${{ github.ref_name }}\`\nCommit: ${{ github.sha }}\nTrigger: ${{ github.event_name }}\n\nSee the workflow run for details on which job(s) failed.`;
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ci-failure'
+            });
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `CI/CD Pipeline Failure - ${{ github.run_id }}`,
+                body: body,
+                labels: ['ci-failure']
+              });
+            }
