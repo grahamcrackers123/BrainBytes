@@ -19,11 +19,11 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy Backend
-        run: railway up --service brainbytes-backend --cwd ./brainbytes-multi-container/backend --ci
+        run: railway up --service brainbytes-backend --ci ./brainbytes-multi-container/backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy Frontend
-        run: railway up --service brainbytes-frontend --cwd ./brainbytes-multi-container/frontend --ci
+        run: railway up --service brainbytes-frontend --ci ./brainbytes-multi-container/frontend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
