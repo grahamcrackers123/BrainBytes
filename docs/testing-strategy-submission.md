@@ -111,6 +111,8 @@
 - **Resolution**: Add `@testing-library/react`, `babel-jest`, and `@babel/preset-react`.
 - **Verification**: Jest processes the .jsx files wihtout a `SyntaxError: Unexpected token '<'` error when `npm test` is executed.
 
+## Test Case Document
+https://docs.google.com/spreadsheets/d/15uumvTSb1GOcKCbzwK3jUMX8HuxDy462Z5mnFjB-_Qk/edit?usp=sharing
 
 ## Test Results Summary
 
