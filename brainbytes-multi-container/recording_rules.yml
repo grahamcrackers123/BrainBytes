@@ -1,0 +1,9 @@
+groups:
+  - name: brainbytes_rules
+    interval: 30s
+    rules:
+      - record: brainbytes:http_requests:rate5m
+        expr: rate(brainbytes_http_requests_total[5m])
+
+      - record: brainbytes:ai_response_duration:p95
+        expr: histogram_quantile(0.95, rate(brainbytes_ai_response_duration_seconds_bucket[5m]))

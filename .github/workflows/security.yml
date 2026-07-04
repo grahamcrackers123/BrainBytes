@@ -1,0 +1,91 @@
+name: BrainBytes Security Scan
+
+on: 
+  workflow_dispatch:
+
+jobs: 
+  security-scan:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            brainbytes-multi-container/frontend/package-lock.json
+            brainbytes-multi-container/backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Audit frontend dependencies
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm audit --json || true
+
+      - name: Install backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm install
+
+      - name: Audit backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm audit --json || true
+
+      - name: Run Snyk to check Frontend vulnerabilities
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high brainbytes-multi-container/frontend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+
+      - name: Run Snyk to check Backend vulnerabilities
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high brainbytes-multi-container/backend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+
+      - name: Create mock environment file for scanning
+        run: |
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+
+      - name: Download Docker image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp/images
+
+      - name: Load Docker images
+        run: |
+          docker load -i /tmp/images/brainbytes-frontend.tar
+          docker load -i /tmp/images/brainbytes-backend.tar
+
+      - name: Scan Frontend Docker Images 
+        uses: aquasecurity/trivy-action@master
+        with: 
+          image-ref: 'brainbytes-frontend:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Scan Backend Docker Images 
+        uses: aquasecurity/trivy-action@master
+        with: 
+          image-ref: 'brainbytes-backend:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'

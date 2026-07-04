@@ -1,0 +1,50 @@
+name: BrainBytes Deploy
+
+on:
+  workflow_dispatch:
+
+jobs: 
+  deploy: 
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+    environment: test
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-outputs 
+          path: brainbytes-multi-container
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+
+      - name: Create mock environment file for deploy
+        run: |
+          mkdir -p brainbytes-multi-container/backend
+          touch brainbytes-multi-container/backend/.env
+
+      - name: Prepare deployment
+        run: | 
+          echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
+          echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Deploy to Test Environment
+        run: |
+          echo "Deploying to test environment..."
+          echo "This is a placeholder for your actual deployment script"
+          echo "In future weeks, this will deploy to Railway.app"
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          curl -s http://localhost:3000/health || echo "Service not available yet"

@@ -1,0 +1,68 @@
+name: BrainBytes Quality Checks
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Run Linters
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            brainbytes-multi-container/frontend/package-lock.json
+            brainbytes-multi-container/backend/package-lock.json
+
+      - name: Install Frontend dependencies
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Lint Frontend code
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+
+      - name: Annotate Frontend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-json: "brainbytes-multi-container/frontend/eslint-report.json"
+
+      - name: Install Backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm install
+
+      - name: Lint Backend code
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm run lint:js -- --format json --output-file eslint-report.json
+        continue-on-error: true
+          
+      - name: Annotate Backend ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with: 
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-json: "brainbytes-multi-container/backend/eslint-report.json"
+
+      - name: Uplaod ESLint reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-reports
+          path: |
+            brainbytes-multi-container/frontend/eslint-report.json
+            brainbytes-multi-container/backend/eslint-report.json
