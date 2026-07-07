@@ -42,6 +42,7 @@ services:
       - mongo-data:/data/db
     restart: unless-stopped
 
+
   prometheus:
     image: prom/prometheus:latest
     ports:

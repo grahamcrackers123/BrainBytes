@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const aiService = require('./aiService.js');
+
 const client = require('prom-client');
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
@@ -151,6 +152,17 @@ app.post('/api/messages', async (req, res) => {
 
     aiTimer();
 
+    // const aiResult = await Promise.race([
+    //   aiService.generateResponse(text, { subject, filter: preferredSubjects }),
+    //   timeoutPromise
+    // ]).catch(() => ({
+    //   category: subject,
+    //   subject,
+    //   questionType: 'general',
+    //   sentiment: 'neutral',
+    //   response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
+    // }));
+
     const aiMessage = new Message({
       text: aiResult.response,
       isUser: false,
@@ -173,6 +185,8 @@ app.post('/api/messages', async (req, res) => {
     });
   } catch (err) {
     console.error('Error in /api/messages route:', err);
+    console.error('Full error object:', err);
+    console.error('Error stack:', err.stack);
     res.status(400).json({ error: err.message });
   } finally {
     activeSessionsGauge.dec();
