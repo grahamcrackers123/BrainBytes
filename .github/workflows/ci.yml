@@ -8,17 +8,6 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
-    services:
-      mongo:
-        image: mongo:7.0
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || mongo --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     strategy:
       matrix:
         node-version: [20.x, 22.x]
@@ -39,6 +28,12 @@ jobs:
       - name: Install frontend dependencies
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
+
+      - name: Install backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
 
       - name: Start backend with Docker Compose
         working-directory: ./brainbytes-multi-container
@@ -65,10 +60,6 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
         run: npm test -- --coverage
-
-      - name: Install backend dependencies
-        working-directory: ./brainbytes-multi-container/backend
-        run: npm install --legacy-peer-deps
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend

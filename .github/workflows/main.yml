@@ -84,7 +84,9 @@ jobs:
 
       - name: Install Backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm install
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
 
       - name: Lint Backend code
         working-directory: ./brainbytes-multi-container/backend
@@ -131,6 +133,12 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
+      - name: Install backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
+
       - name: Start backend with Docker Compose
         working-directory: ./brainbytes-multi-container
         env:
@@ -156,10 +164,6 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
         run: npm test -- --coverage
-
-      - name: Install backend dependencies
-        working-directory: ./brainbytes-multi-container/backend
-        run: npm install --legacy-peer-deps
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
@@ -369,7 +373,9 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm install
+        run: |
+          npm cache clean --force
+          npm ci --legacy-peer-deps
 
       - name: Audit backend dependencies
         working-directory: ./brainbytes-multi-container/backend
