@@ -11,13 +11,13 @@ const httpRequestCounter = new client.Counter({
   name: 'brainbytes_http_requests_total',
   help: 'Total number of HTTP requests',
   labelNames: ['method', 'route', 'status'],
-  registers: [register]
+  registers: [register],
 });
 
 const activeSessionsGauge = new client.Gauge({
   name: 'brainbytes_active_sessions',
   help: 'Number of currently active chat sessions',
-  registers: [register]
+  registers: [register],
 });
 
 const aiResponseDuration = new client.Histogram({
@@ -25,39 +25,41 @@ const aiResponseDuration = new client.Histogram({
   help: 'Duration of AI response generation in seconds',
   labelNames: ['subject'],
   buckets: [0.5, 1, 2, 5, 10, 15],
-  registers: [register]
+  registers: [register],
 });
 
 const responseSizeBytes = new client.Counter({
   name: 'brainbytes_response_bytes_total',
   help: 'Total bytes sent in API responses (data usage tracking)',
   labelNames: ['route'],
-  registers: [register]
+  registers: [register],
 });
 
 const timeoutCounter = new client.Counter({
   name: 'brainbytes_request_timeouts_total',
   help: 'Total requests that timed out (proxy for intermittent connectivity)',
   labelNames: ['subject'],
-  registers: [register]
+  registers: [register],
 });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
   : ['http://localhost:7000', 'http://localhost:3000'];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+  })
+);
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -73,13 +75,14 @@ aiService.initializeAI();
 
 const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes';
 
-mongoose.connect(mongoUrl)
-.then(() => {
-  console.log('Connected to MongoDB');
-})
-.catch((err) => {
-  console.error('Failed to connect to MongoDB:', err);
-});
+mongoose
+  .connect(mongoUrl)
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch((err) => {
+    console.error('Failed to connect to MongoDB:', err);
+  });
 
 const Message = require('./models/Message');
 const UserProfile = require('./models/UserProfile');
@@ -98,7 +101,7 @@ app.get('/health', async (req, res) => {
     status: dbState === 1 ? 'healthy' : 'degraded',
     database: dbStatus[dbState] || 'unknown',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -119,9 +122,7 @@ app.get('/api/messages', async (req, res) => {
     if (chatId) filter.chatId = chatId;
     if (username) filter.username = username;
 
-    const messages = await Message.find(filter)
-      .sort({ createdAt: 1 })
-      .limit(limit);
+    const messages = await Message.find(filter).sort({ createdAt: 1 }).limit(limit);
 
     res.json(messages);
   } catch (err) {
@@ -150,7 +151,7 @@ app.post('/api/messages', async (req, res) => {
       subject,
       category: subject,
       chatId,
-      username
+      username,
     });
     await userMessage.save();
 
@@ -162,7 +163,7 @@ app.post('/api/messages', async (req, res) => {
 
     const aiResult = await Promise.race([
       aiService.generateResponse(text, { subject, filter: preferredSubjects }),
-      timeoutPromise
+      timeoutPromise,
     ]).catch(() => {
       timeoutCounter.inc({ subject });
       return {
@@ -170,7 +171,8 @@ app.post('/api/messages', async (req, res) => {
         subject,
         questionType: 'general',
         sentiment: 'neutral',
-        response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
+        response:
+          "I'm sorry, I couldn't process your request in time. Please try again with a shorter question.",
       };
     });
 
@@ -195,7 +197,7 @@ app.post('/api/messages', async (req, res) => {
       sentiment: aiResult.sentiment || 'neutral',
       category: aiResult.category || subject,
       chatId,
-      username
+      username,
     });
     await aiMessage.save();
 
@@ -205,7 +207,7 @@ app.post('/api/messages', async (req, res) => {
       category: aiResult.category,
       questionType: aiResult.questionType,
       sentiment: aiResult.sentiment,
-      chatId
+      chatId,
     });
   } catch (err) {
     console.error('Error in /api/messages route:', err);
@@ -264,7 +266,7 @@ app.put('/api/profiles/:id', async (req, res) => {
   try {
     const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-      runValidators: true
+      runValidators: true,
     });
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });

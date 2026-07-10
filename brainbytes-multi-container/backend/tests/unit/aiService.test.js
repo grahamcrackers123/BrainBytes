@@ -1,7 +1,4 @@
-const {
-  detectQuestionType,
-  detectSentiment,
-} = require('../../aiService');
+const { detectQuestionType, detectSentiment } = require('../../aiService');
 
 describe('detectQuestionType', () => {
   test('returns "definition" for "what is" questions', () => {

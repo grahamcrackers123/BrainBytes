@@ -83,8 +83,22 @@ describe('GET /api/messages', () => {
 
   test('filters messages by username', async () => {
     await Message.create([
-      { text: 'Hi', isUser: true, chatId: 'chat_1', username: 'alice', subject: 'general', category: 'general' },
-      { text: 'Hey', isUser: true, chatId: 'chat_2', username: 'bob', subject: 'math', category: 'math' },
+      {
+        text: 'Hi',
+        isUser: true,
+        chatId: 'chat_1',
+        username: 'alice',
+        subject: 'general',
+        category: 'general',
+      },
+      {
+        text: 'Hey',
+        isUser: true,
+        chatId: 'chat_2',
+        username: 'bob',
+        subject: 'math',
+        category: 'math',
+      },
     ]);
 
     const res = await request(app).get('/api/messages?username=alice');

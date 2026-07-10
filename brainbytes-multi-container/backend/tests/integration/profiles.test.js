@@ -53,7 +53,10 @@ beforeAll(async () => {
 
   app.put('/api/profiles/:id', async (req, res) => {
     try {
-      const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+      const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true,
+      });
       if (!profile) return res.status(404).json({ error: 'Profile not found' });
       res.json(profile);
     } catch (err) {
@@ -83,11 +86,13 @@ afterEach(async () => {
 
 describe('POST /api/profiles', () => {
   test('creates a new user profile', async () => {
-    const res = await request(app).post('/api/profiles').send({
-      name: 'Alice',
-      email: 'alice@example.com',
-      preferredSubjects: ['math', 'science'],
-    });
+    const res = await request(app)
+      .post('/api/profiles')
+      .send({
+        name: 'Alice',
+        email: 'alice@example.com',
+        preferredSubjects: ['math', 'science'],
+      });
 
     expect(res.statusCode).toBe(201);
     expect(res.body.name).toBe('Alice');
@@ -180,7 +185,9 @@ describe('GET /api/profiles/:id', () => {
 describe('PUT /api/profiles/:id', () => {
   test('updates profile name', async () => {
     const created = await UserProfile.create({ name: 'Alice', email: 'alice@example.com' });
-    const res = await request(app).put(`/api/profiles/${created._id}`).send({ name: 'Alice Updated' });
+    const res = await request(app)
+      .put(`/api/profiles/${created._id}`)
+      .send({ name: 'Alice Updated' });
     expect(res.statusCode).toBe(200);
     expect(res.body.name).toBe('Alice Updated');
   });

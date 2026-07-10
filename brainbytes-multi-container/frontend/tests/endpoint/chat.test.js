@@ -27,9 +27,7 @@ describe('E2E: Backend API reachable from frontend container', () => {
     expect(post.status).toBe(201);
     expect(post.data.userMessage.text).toBe('E2E test question');
 
-    const get = await axios.get(
-      `${API_URL}/api/messages?chatId=${payload.chatId}`
-    );
+    const get = await axios.get(`${API_URL}/api/messages?chatId=${payload.chatId}`);
     expect(get.data.length).toBeGreaterThanOrEqual(1);
     expect(get.data[0].text).toBe('E2E test question');
   });

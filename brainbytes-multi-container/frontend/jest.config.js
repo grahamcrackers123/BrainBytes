@@ -11,11 +11,7 @@ module.exports = {
   },
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  collectCoverageFrom: [
-    'components/**/*.js',
-    'pages/**/*.js',
-    '!pages/_app.js',
-  ],
+  collectCoverageFrom: ['components/**/*.js', 'pages/**/*.js', '!pages/_app.js'],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {

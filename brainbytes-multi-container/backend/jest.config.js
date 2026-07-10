@@ -4,12 +4,7 @@ module.exports = {
   testTimeout: 30000,
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  collectCoverageFrom: [
-    '**/*.js',
-    '!**/node_modules/**',
-    '!**/coverage/**',
-    '!jest.config.js',
-  ],
+  collectCoverageFrom: ['**/*.js', '!**/node_modules/**', '!**/coverage/**', '!jest.config.js'],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
