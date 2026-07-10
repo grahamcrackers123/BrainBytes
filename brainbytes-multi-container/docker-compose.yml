@@ -42,5 +42,18 @@ services:
       - mongo-data:/data/db
     restart: unless-stopped
 
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./recording_rules.yml:/etc/prometheus/recording_rules.yml
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   mongo-data:

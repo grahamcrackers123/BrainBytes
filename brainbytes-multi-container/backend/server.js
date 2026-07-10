@@ -3,11 +3,59 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const aiService = require('./aiService.js');
 
+const client = require('prom-client');
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new client.Counter({
+  name: 'brainbytes_http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status'],
+  registers: [register]
+});
+
+const activeSessionsGauge = new client.Gauge({
+  name: 'brainbytes_active_sessions',
+  help: 'Number of currently active chat sessions',
+  registers: [register]
+});
+
+const aiResponseDuration = new client.Histogram({
+  name: 'brainbytes_ai_response_duration_seconds',
+  help: 'Duration of AI response generation in seconds',
+  labelNames: ['subject'],
+  buckets: [0.5, 1, 2, 5, 10, 15],
+  registers: [register]
+});
+
+const responseSizeBytes = new client.Counter({
+  name: 'brainbytes_response_bytes_total',
+  help: 'Total bytes sent in API responses (data usage tracking)',
+  labelNames: ['route'],
+  registers: [register]
+});
+
+const timeoutCounter = new client.Counter({
+  name: 'brainbytes_request_timeouts_total',
+  help: 'Total requests that timed out (proxy for intermittent connectivity)',
+  labelNames: ['subject'],
+  registers: [register]
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestCounter.inc({ method: req.method, route: req.path, status: res.statusCode });
+    const size = parseInt(res.getHeader('content-length')) || 0;
+    responseSizeBytes.inc({ route: req.path }, size);
+  });
+  next();
+});
 
 aiService.initializeAI();
 
@@ -28,6 +76,12 @@ const LearningMaterial = require('./models/LearningMaterial');
 // Welcome
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the BrainBytes API' });
+});
+
+// Metrics
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Get messages
@@ -54,6 +108,7 @@ app.get('/api/messages', async (req, res) => {
 
 // Send message and get AI response
 app.post('/api/messages', async (req, res) => {
+  activeSessionsGauge.inc();
   try {
     const text = (req.body.text || '').trim();
     const subject = (req.body.subject || 'general').toLowerCase();
@@ -79,16 +134,34 @@ app.post('/api/messages', async (req, res) => {
       setTimeout(() => reject(new Error('Request timeout')), 15000);
     });
 
+    const aiTimer = aiResponseDuration.startTimer({ subject });
+
     const aiResult = await Promise.race([
       aiService.generateResponse(text, { subject, filter: preferredSubjects }),
       timeoutPromise
-    ]).catch(() => ({
-      category: subject,
-      subject,
-      questionType: 'general',
-      sentiment: 'neutral',
-      response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
-    }));
+    ]).catch(() => {
+      timeoutCounter.inc({ subject });
+      return {
+        category: subject,
+        subject,
+        questionType: 'general',
+        sentiment: 'neutral',
+        response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
+      };
+    });
+
+    aiTimer();
+
+    // const aiResult = await Promise.race([
+    //   aiService.generateResponse(text, { subject, filter: preferredSubjects }),
+    //   timeoutPromise
+    // ]).catch(() => ({
+    //   category: subject,
+    //   subject,
+    //   questionType: 'general',
+    //   sentiment: 'neutral',
+    //   response: "I'm sorry, I couldn't process your request in time. Please try again with a shorter question."
+    // }));
 
     const aiMessage = new Message({
       text: aiResult.response,
@@ -115,6 +188,8 @@ app.post('/api/messages', async (req, res) => {
     console.error('Full error object:', err);
     console.error('Error stack:', err.stack);
     res.status(400).json({ error: err.message });
+  } finally {
+    activeSessionsGauge.dec();
   }
 });
 
