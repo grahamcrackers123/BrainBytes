@@ -1,0 +1,52 @@
+version: '3'
+services:
+  frontend:
+    image: brainbytes-frontend:latest
+    ports:
+      - "7000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${BACKEND_URL}
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    image: brainbytes-backend:latest
+    ports:
+      - "5000:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - CORS_ORIGIN=${FRONTEND_URL}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      - mongo
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - mongo-prod-data:/data/db
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongo-prod-data:
