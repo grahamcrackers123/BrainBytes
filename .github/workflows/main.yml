@@ -159,7 +159,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
