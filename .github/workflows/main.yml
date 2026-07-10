@@ -75,7 +75,6 @@ jobs:
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
 
       - name: Annotate Frontend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
@@ -90,7 +89,6 @@ jobs:
       - name: Lint Backend code
         working-directory: ./brainbytes-multi-container/backend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
           
       - name: Annotate Backend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
@@ -111,17 +109,6 @@ jobs:
     needs: lint 
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    services:
-      mongo:
-        image: mongo:4.4
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || mongo --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     strategy:
       matrix:
@@ -144,37 +131,32 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
-      - name: Start backend
-        working-directory: ./brainbytes-multi-container/backend
-        env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
-          MONGO_URL: mongodb://localhost:27017/brainbytes
+      - name: Start backend with Docker Compose
+        working-directory: ./brainbytes-multi-container
         run: |
-          npm install
-          touch backend.log
-          nohup npm start > backend.log 2>&1 &
-          sleep 10
-          echo "--- backend.log ---"
-          cat backend.log || echo "(log not available yet)"
-          echo "--- checking port ---"
-          curl -sv http://localhost:3000/ || echo "localhost:3000 not responding yet"
+          docker compose up -d --build backend mongo
+          echo "--- waiting for backend to be ready ---"
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/health > /dev/null; then
+              echo "Backend is up"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          docker compose ps
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
+          NEXT_PUBLIC_API_URL: http://localhost:5000
         run: npm test
-
-      - name: Show backend log after frontend tests
-        if: always()
-        working-directory: ./brainbytes-multi-container/backend
-        run: cat backend.log || echo "(no backend.log found)"
 
       - name: Run Frontend tests with coverage
         working-directory: ./brainbytes-multi-container/frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
-        run: npm test -- --coverage || echo "No coverage script setup found"
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm test -- --coverage
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
@@ -188,7 +170,12 @@ jobs:
         env:
           GROQ_API_KEY: gsk-test-dummy-key-for-ci
           MONGO_URL: mongodb://localhost:27017/brainbytes
-        run: npm test -- --coverage || echo "No coverage script setup found"
+        run: npm test -- --coverage
+
+      - name: Stop Docker Compose
+        if: always()
+        working-directory: ./brainbytes-multi-container
+        run: docker compose down
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4
@@ -228,7 +215,6 @@ jobs:
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
-          echo "NODE_ENV=test" >> brainbytes-multi-container/backend/.env
 
       - name: Build frontend image
         uses: docker/build-push-action@v4
@@ -236,7 +222,9 @@ jobs:
           context: ./brainbytes-multi-container/frontend
           push: false
           load: true
-          tags: brainbytes-frontend:latest
+          tags: |
+            brainbytes-frontend:${{ github.sha }}
+            brainbytes-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -246,7 +234,9 @@ jobs:
           context: ./brainbytes-multi-container/backend
           push: false
           load: true
-          tags: brainbytes-backend:latest
+          tags: |
+            brainbytes-backend:${{ github.sha }}
+            brainbytes-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -254,14 +244,14 @@ jobs:
         run: |
           echo "--- docker images ---"
           docker images
-          docker image inspect brainbytes-frontend:latest > /dev/null
-          docker image inspect brainbytes-backend:latest > /dev/null
+          docker image inspect brainbytes-frontend:${{ github.sha }} > /dev/null
+          docker image inspect brainbytes-backend:${{ github.sha }} > /dev/null
 
       - name: Save Docker images as artifacts
         run: |
           mkdir -p /tmp/images
-          docker save brainbytes-frontend:latest -o /tmp/images/brainbytes-frontend.tar
-          docker save brainbytes-backend:latest -o /tmp/images/brainbytes-backend.tar
+          docker save brainbytes-frontend:${{ github.sha }} -o /tmp/images/brainbytes-frontend.tar
+          docker save brainbytes-backend:${{ github.sha }} -o /tmp/images/brainbytes-backend.tar
 
       - name: Test Docker Compose setup
         working-directory: ./brainbytes-multi-container
@@ -344,10 +334,12 @@ jobs:
         shell: bash
 
       - name: Verify Deployment
+        env:
+          DEPLOY_URL: ${{ vars.DEPLOY_URL || 'http://localhost:7000' }}
         run: |
           echo "Verifying deployment..."
           sleep 5
-          curl -s http://localhost:3000/health || echo "Service not available yet"
+          curl -sf "$DEPLOY_URL/health" && echo "Deployment verified successfully" || echo "Warning: Service not available at $DEPLOY_URL"
 
   security-scan:
     runs-on: ubuntu-latest
@@ -393,7 +385,6 @@ jobs:
           args: --severity-threshold=high brainbytes-multi-container/frontend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Run Snyk to check Backend vulnerabilities
         uses: snyk/actions/node@master
@@ -401,7 +392,6 @@ jobs:
           args: --severity-threshold=high brainbytes-multi-container/backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Create mock environment file for scanning
         run: |

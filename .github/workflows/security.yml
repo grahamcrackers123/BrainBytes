@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [20.x, 22.x]
 
     steps: 
       - name: Check out code
@@ -46,7 +46,6 @@ jobs:
           args: --severity-threshold=high brainbytes-multi-container/frontend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Run Snyk to check Backend vulnerabilities
         uses: snyk/actions/node@master
@@ -54,7 +53,6 @@ jobs:
           args: --severity-threshold=high brainbytes-multi-container/backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Create mock environment file for scanning
         run: |
