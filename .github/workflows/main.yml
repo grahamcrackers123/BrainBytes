@@ -157,6 +157,10 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:5000
         run: npm test -- --coverage
 
+      - name: Install backend dependencies
+        working-directory: ./brainbytes-multi-container/backend
+        run: npm install
+
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
         env:
