@@ -137,7 +137,7 @@ jobs:
           docker compose up -d --build backend mongo
           echo "--- waiting for backend to be ready ---"
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:5000/health > /dev/null; then
+            if curl -sf http://localhost:5000/health | grep -q '"healthy"'; then
               echo "Backend is up"
               break
             fi
