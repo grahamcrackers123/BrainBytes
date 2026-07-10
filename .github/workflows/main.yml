@@ -70,7 +70,7 @@ jobs:
 
       - name: Run Prettier formatting check
         working-directory: ./brainbytes-multi-container/frontend
-        run: npx prettier --check . || echo "Prettier found formatting issues. Run 'npm run format' to fix."
+        run: npx prettier --check .
 
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend

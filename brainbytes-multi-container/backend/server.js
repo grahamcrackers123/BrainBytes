@@ -90,6 +90,18 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the BrainBytes API' });
 });
 
+// Health check
+app.get('/health', async (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  res.json({
+    status: dbState === 1 ? 'healthy' : 'degraded',
+    database: dbStatus[dbState] || 'unknown',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Metrics
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
