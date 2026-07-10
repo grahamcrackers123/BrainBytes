@@ -32,8 +32,8 @@ jobs:
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
         run: |
-          npm cache clean --force
-          npm ci --legacy-peer-deps
+          npm cache clean --force || true
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Start backend with Docker Compose
         working-directory: ./brainbytes-multi-container
