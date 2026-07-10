@@ -18,7 +18,6 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [chatStarted, setChatStarted] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
 
   const messageEndRef = useRef(null);
@@ -404,7 +403,7 @@ export default function Home() {
                       Ask questions about math, science, history, programming, technology, and more.
                     </p>
                     <p style={{ marginTop: '15px', fontSize: '14px', color: '#999' }}>
-                      Click "New Chat" to start a new conversation.
+                      Click &quot;New Chat&quot; to start a new conversation.
                     </p>
                   </div>
                 ) : (
