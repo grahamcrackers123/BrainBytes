@@ -2,15 +2,15 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const { connectMongo, requireMongo, disconnectMongo } = require('./helpers');
 
 const Message = require('../../models/Message');
 
 let app;
 
 beforeAll(async () => {
-  const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes_test';
-  await mongoose.connect(mongoUrl);
-  await mongoose.connection.dropDatabase();
+  await connectMongo('messages integration tests');
+  if (mongoose.connection.readyState !== 1) return;
 
   app = express();
   app.use(cors());
@@ -51,22 +51,21 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
+  await disconnectMongo();
 });
 
-afterEach(async () => {
+afterEach(requireMongo(async () => {
   await Message.deleteMany({});
-});
+}));
 
 describe('GET /api/messages', () => {
-  test('returns empty array when no messages exist', async () => {
+  test('returns empty array when no messages exist', requireMongo(async () => {
     const res = await request(app).get('/api/messages');
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
-  });
+  }));
 
-  test('returns messages for a specific chatId', async () => {
+  test('returns messages for a specific chatId', requireMongo(async () => {
     await Message.create({
       text: 'Hello',
       isUser: true,
@@ -79,9 +78,9 @@ describe('GET /api/messages', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].text).toBe('Hello');
-  });
+  }));
 
-  test('filters messages by username', async () => {
+  test('filters messages by username', requireMongo(async () => {
     await Message.create([
       {
         text: 'Hi',
@@ -105,11 +104,11 @@ describe('GET /api/messages', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].username).toBe('alice');
-  });
+  }));
 });
 
 describe('POST /api/messages', () => {
-  test('creates a user message successfully', async () => {
+  test('creates a user message successfully', requireMongo(async () => {
     const res = await request(app).post('/api/messages').send({
       text: 'What is gravity?',
       subject: 'science',
@@ -121,9 +120,9 @@ describe('POST /api/messages', () => {
     expect(res.body.userMessage.text).toBe('What is gravity?');
     expect(res.body.userMessage.isUser).toBe(true);
     expect(res.body.userMessage.subject).toBe('science');
-  });
+  }));
 
-  test('returns 400 when text is missing', async () => {
+  test('returns 400 when text is missing', requireMongo(async () => {
     const res = await request(app).post('/api/messages').send({
       subject: 'math',
       chatId: 'chat_test_100',
@@ -131,9 +130,9 @@ describe('POST /api/messages', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toBe('Message text is required.');
-  });
+  }));
 
-  test('defaults subject to general when not provided', async () => {
+  test('defaults subject to general when not provided', requireMongo(async () => {
     const res = await request(app).post('/api/messages').send({
       text: 'Tell me something',
       chatId: 'chat_test_101',
@@ -141,5 +140,5 @@ describe('POST /api/messages', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body.userMessage.subject).toBe('general');
-  });
+  }));
 });

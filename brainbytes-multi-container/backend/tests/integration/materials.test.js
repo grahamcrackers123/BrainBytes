@@ -2,15 +2,15 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const { connectMongo, requireMongo, disconnectMongo } = require('./helpers');
 
 const LearningMaterial = require('../../models/LearningMaterial');
 
 let app;
 
 beforeAll(async () => {
-  const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes_test';
-  await mongoose.connect(mongoUrl);
-  await mongoose.connection.dropDatabase();
+  await connectMongo('materials integration tests');
+  if (mongoose.connection.readyState !== 1) return;
 
   app = express();
   app.use(cors());
@@ -50,16 +50,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
+  await disconnectMongo();
 });
 
-afterEach(async () => {
+afterEach(requireMongo(async () => {
   await LearningMaterial.deleteMany({});
-});
+}));
 
 describe('POST /api/materials', () => {
-  test('creates a new learning material', async () => {
+  test('creates a new learning material', requireMongo(async () => {
     const res = await request(app).post('/api/materials').send({
       subject: 'math',
       topic: 'Algebra Basics',
@@ -69,18 +68,18 @@ describe('POST /api/materials', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.subject).toBe('math');
     expect(res.body.topic).toBe('Algebra Basics');
-  });
+  }));
 
-  test('returns 400 when required fields are missing', async () => {
+  test('returns 400 when required fields are missing', requireMongo(async () => {
     const res = await request(app).post('/api/materials').send({
       subject: 'science',
     });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toBeDefined();
-  });
+  }));
 
-  test('stores subject in lowercase', async () => {
+  test('stores subject in lowercase', requireMongo(async () => {
     const res = await request(app).post('/api/materials').send({
       subject: 'SCIENCE',
       topic: 'Physics',
@@ -89,17 +88,17 @@ describe('POST /api/materials', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body.subject).toBe('science');
-  });
+  }));
 });
 
 describe('GET /api/materials', () => {
-  test('returns empty list when no materials exist', async () => {
+  test('returns empty list when no materials exist', requireMongo(async () => {
     const res = await request(app).get('/api/materials');
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
-  });
+  }));
 
-  test('returns all materials sorted by newest first', async () => {
+  test('returns all materials sorted by newest first', requireMongo(async () => {
     await LearningMaterial.create([
       { subject: 'math', topic: 'Algebra', content: 'Algebra content' },
       { subject: 'science', topic: 'Physics', content: 'Physics content' },
@@ -108,9 +107,9 @@ describe('GET /api/materials', () => {
     const res = await request(app).get('/api/materials');
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(2);
-  });
+  }));
 
-  test('filters materials by subject', async () => {
+  test('filters materials by subject', requireMongo(async () => {
     await LearningMaterial.create([
       { subject: 'math', topic: 'Algebra', content: 'Algebra content' },
       { subject: 'science', topic: 'Physics', content: 'Physics content' },
@@ -120,9 +119,9 @@ describe('GET /api/materials', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].topic).toBe('Algebra');
-  });
+  }));
 
-  test('filters materials by topic with partial match', async () => {
+  test('filters materials by topic with partial match', requireMongo(async () => {
     await LearningMaterial.create([
       { subject: 'math', topic: 'Algebra Basics', content: 'Content' },
       { subject: 'math', topic: 'Advanced Calculus', content: 'Content' },
@@ -132,11 +131,11 @@ describe('GET /api/materials', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].topic).toBe('Algebra Basics');
-  });
+  }));
 });
 
 describe('GET /api/materials/:id', () => {
-  test('returns material by id', async () => {
+  test('returns material by id', requireMongo(async () => {
     const created = await LearningMaterial.create({
       subject: 'history',
       topic: 'World War II',
@@ -146,12 +145,12 @@ describe('GET /api/materials/:id', () => {
     const res = await request(app).get(`/api/materials/${created._id}`);
     expect(res.statusCode).toBe(200);
     expect(res.body.topic).toBe('World War II');
-  });
+  }));
 
-  test('returns 404 for non-existent id', async () => {
+  test('returns 404 for non-existent id', requireMongo(async () => {
     const fakeId = new mongoose.Types.ObjectId();
     const res = await request(app).get(`/api/materials/${fakeId}`);
     expect(res.statusCode).toBe(404);
     expect(res.body.error).toBe('Material not found');
-  });
+  }));
 });
