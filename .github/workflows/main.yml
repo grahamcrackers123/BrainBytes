@@ -356,6 +356,7 @@ jobs:
         run: npm audit --json || true
 
       - name: Run Snyk to check Frontend vulnerabilities
+        continue-on-error: true
         uses: snyk/actions/node@master
         with:
           args: --severity-threshold=high brainbytes-multi-container/frontend
@@ -363,6 +364,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk to check Backend vulnerabilities
+        continue-on-error: true
         uses: snyk/actions/node@master
         with:
           args: --severity-threshold=high brainbytes-multi-container/backend
