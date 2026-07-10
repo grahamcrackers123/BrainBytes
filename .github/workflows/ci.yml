@@ -42,7 +42,12 @@ jobs:
 
       - name: Start backend with Docker Compose
         working-directory: ./brainbytes-multi-container
+        env:
+          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          MONGO_URL: mongodb://mongo:27017/brainbytes
         run: |
+          echo "GROQ_API_KEY=$GROQ_API_KEY" >> backend/.env
+          echo "MONGO_URL=$MONGO_URL" >> backend/.env
           docker compose up -d --build backend mongo
           echo "--- waiting for backend to be ready ---"
           for i in $(seq 1 30); do
