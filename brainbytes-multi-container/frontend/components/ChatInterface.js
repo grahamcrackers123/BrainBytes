@@ -25,9 +25,9 @@ export default function ChatInterface() {
       id: Date.now(),
       text: input,
       sender: 'user',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput('');
     setIsLoading(true);
 
@@ -48,9 +48,9 @@ export default function ChatInterface() {
         id: Date.now() + 1,
         text: data.message,
         sender: 'ai',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      setMessages(prevMessages => [...prevMessages, aiMessage]);
+      setMessages((prevMessages) => [...prevMessages, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       // Add error message to chat
@@ -58,9 +58,9 @@ export default function ChatInterface() {
         id: Date.now() + 1,
         text: 'Sorry, I encountered an error. Please try again later.',
         sender: 'ai',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -69,9 +69,9 @@ export default function ChatInterface() {
   return (
     <div className={styles.chatContainer}>
       <div className={styles.messagesContainer}>
-        {messages.map(msg => (
-          <div 
-            key={msg.id} 
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
             className={`${styles.message} ${
               msg.sender === 'user' ? styles.userMessage : styles.aiMessage
             }`}

@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [20.x, 22.x]
 
     steps:
       - name: Check out code
@@ -29,32 +29,56 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
-      - name: Start backend
+      - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
         run: |
-          npm install
-          npm start &
-          sleep 15
+          npm cache clean --force || true
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Start backend with Docker Compose
+        working-directory: ./brainbytes-multi-container
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MONGO_URL: mongodb://mongo:27017/brainbytes
+        run: |
+          echo "GROQ_API_KEY=$GROQ_API_KEY" >> backend/.env
+          echo "MONGO_URL=$MONGO_URL" >> backend/.env
+          docker compose up -d --build backend mongo
+          echo "--- waiting for backend to be ready ---"
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/health > /dev/null; then
+              echo "Backend is up"
+              ready=true
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          if [ "$ready" = false ]; then
+            echo "Backend failed to start within 60s"
+            docker compose logs
+            exit 1
+          fi
+          docker compose ps
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
-        run: npm test
-
-      - name: Run Frontend tests with coverage
-        working-directory: ./brainbytes-multi-container/frontend
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
-        run: npm test -- --coverage || echo "No coverage script setup found"
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm test -- --coverage
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
-        run: npm test
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MONGO_URL: mongodb://localhost:27017/brainbytes
+        run: npm test -- --coverage
 
-      - name: Run Backend tests with coverage
-        working-directory: ./brainbytes-multi-container/backend
-        run: npm test -- --coverage || echo "No coverage script setup found"
+      - name: Stop Docker Compose
+        if: always()
+        working-directory: ./brainbytes-multi-container
+        run: docker compose down
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4

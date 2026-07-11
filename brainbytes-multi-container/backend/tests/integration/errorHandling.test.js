@@ -2,13 +2,13 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const { connectMongo, requireMongo, disconnectMongo } = require('./helpers');
 
 let app;
 
 beforeAll(async () => {
-  const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017/brainbytes_test';
-  await mongoose.connect(mongoUrl);
-  await mongoose.connection.dropDatabase();
+  await connectMongo('error handling integration tests');
+  if (mongoose.connection.readyState !== 1) return;
 
   app = express();
   app.use(cors());
@@ -60,51 +60,50 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
+  await disconnectMongo();
 });
 
 describe('Error handling middleware', () => {
-  test('returns 500 for database connection failure', async () => {
+  test('returns 500 for database connection failure', requireMongo(async () => {
     const res = await request(app).get('/api/error-test/db-error');
     expect(res.statusCode).toBe(500);
     expect(res.body.error).toBe('Database connection failed');
-  });
+  }));
 
-  test('returns 400 for missing required field', async () => {
+  test('returns 400 for missing required field', requireMongo(async () => {
     const res = await request(app).post('/api/error-test/validate').send({});
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toBe('The field "required" is mandatory.');
-  });
+  }));
 
-  test('passes validation with required field present', async () => {
+  test('passes validation with required field present', requireMongo(async () => {
     const res = await request(app).post('/api/error-test/validate').send({ required: 'present' });
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-  });
+  }));
 
-  test('returns 504 for request timeout', async () => {
+  test('returns 504 for request timeout', requireMongo(async () => {
     const res = await request(app).get('/api/error-test/timeout');
     expect(res.statusCode).toBe(504);
     expect(res.body.error).toBe('Request timeout');
-  });
+  }));
 
-  test('returns 404 for unknown routes', async () => {
+  test('returns 404 for unknown routes', requireMongo(async () => {
     const res = await request(app).get('/api/nonexistent-route');
     expect(res.statusCode).toBe(404);
     expect(res.body.error).toBe('Route not found');
-  });
+  }));
 
-  test('handles malformed JSON body gracefully', async () => {
+  test('handles malformed JSON body gracefully', requireMongo(async () => {
     const res = await request(app)
       .post('/api/materials')
       .set('Content-Type', 'application/json')
       .send('not valid json');
     expect(res.statusCode).toBe(400);
-  });
+  }));
 
-  test('returns 404 for POST to non-existent route', async () => {
+  test('returns 404 for POST to non-existent route', requireMongo(async () => {
     const res = await request(app).post('/api/nowhere');
     expect(res.statusCode).toBe(404);
-  });
+  }));
 });
