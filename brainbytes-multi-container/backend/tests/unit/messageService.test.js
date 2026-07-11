@@ -69,7 +69,9 @@ describe('Message service with mocked database', () => {
         limit: jest.fn().mockResolvedValue([]),
       }));
 
-      const results = await Message.find({ chatId: 'nonexistent' }).sort({ createdAt: 1 }).limit(50);
+      const results = await Message.find({ chatId: 'nonexistent' })
+        .sort({ createdAt: 1 })
+        .limit(50);
       expect(results).toEqual([]);
     });
   });

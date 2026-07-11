@@ -1,0 +1,5 @@
+services:
+  frontend:
+    image: brainbytes-frontend:latest
+  backend:
+    image: brainbytes-backend:latest

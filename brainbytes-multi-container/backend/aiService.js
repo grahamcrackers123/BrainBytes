@@ -5,8 +5,8 @@ const OpenAI = require('openai');
 // =========================
 
 const client = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1'
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
 });
 
 // =========================
@@ -14,15 +14,11 @@ const client = new OpenAI({
 // =========================
 
 const initializeAI = () => {
+  console.log('BrainBytes AI initialized');
 
-    console.log('BrainBytes AI initialized');
-
-    if (!process.env.GROQ_API_KEY) {
-
-        console.warn(
-            'Warning: GROQ_API_KEY is not set.'
-        );
-    }
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('Warning: GROQ_API_KEY is not set.');
+  }
 };
 
 // =========================
@@ -30,22 +26,16 @@ const initializeAI = () => {
 // =========================
 
 async function generateResponse(question, options = {}) {
+  const lowerQuestion = question.toLowerCase().trim();
 
-    const lowerQuestion =
-        question.toLowerCase().trim();
+  const preferredSubject = options.subject || 'general';
 
-    const preferredSubject =
-        options.subject || 'general';
+  const questionType = detectQuestionType(lowerQuestion);
 
-    const questionType =
-        detectQuestionType(lowerQuestion);
+  const sentiment = detectSentiment(lowerQuestion);
 
-    const sentiment =
-        detectSentiment(lowerQuestion);
-
-    try {
-
-        let systemPrompt = `
+  try {
+    let systemPrompt = `
 You are BrainBytes AI Tutor.
 
 Rules:
@@ -62,13 +52,12 @@ reply ONLY with:
 ⚠ Please switch to the correct subject filter.
 `;
 
-        // =========================
-        // MATH
-        // =========================
+    // =========================
+    // MATH
+    // =========================
 
-        if (preferredSubject === 'math') {
-
-            systemPrompt += `
+    if (preferredSubject === 'math') {
+      systemPrompt += `
 You are excellent at mathematics.
 
 Help solve:
@@ -85,15 +74,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // SCIENCE
-        // =========================
+    // =========================
+    // SCIENCE
+    // =========================
 
-        if (preferredSubject === 'science') {
-
-            systemPrompt += `
+    if (preferredSubject === 'science') {
+      systemPrompt += `
 You are excellent at science explanations.
 
 Topics may include:
@@ -112,15 +100,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // HISTORY
-        // =========================
+    // =========================
+    // HISTORY
+    // =========================
 
-        if (preferredSubject === 'history') {
-
-            systemPrompt += `
+    if (preferredSubject === 'history') {
+      systemPrompt += `
 You are excellent at history.
 
 Explain:
@@ -138,15 +125,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // TECHNOLOGY
-        // =========================
+    // =========================
+    // TECHNOLOGY
+    // =========================
 
-        if (preferredSubject === 'technology') {
-
-            systemPrompt += `
+    if (preferredSubject === 'technology') {
+      systemPrompt += `
 You are excellent at programming and technology.
 
 Help with:
@@ -167,15 +153,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // GEOGRAPHY
-        // =========================
+    // =========================
+    // GEOGRAPHY
+    // =========================
 
-        if (preferredSubject === 'geography') {
-
-            systemPrompt += `
+    if (preferredSubject === 'geography') {
+      systemPrompt += `
 You are excellent at geography.
 
 Help explain:
@@ -194,15 +179,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // ENGLISH
-        // =========================
+    // =========================
+    // ENGLISH
+    // =========================
 
-        if (preferredSubject === 'english') {
-
-            systemPrompt += `
+    if (preferredSubject === 'english') {
+      systemPrompt += `
 You are excellent at English grammar and writing.
 
 Help with:
@@ -220,15 +204,14 @@ reply ONLY with:
 
 ⚠ Please switch to the correct subject filter.
 `;
-        }
+    }
 
-        // =========================
-        // GENERAL
-        // =========================
+    // =========================
+    // GENERAL
+    // =========================
 
-        if (preferredSubject === 'general') {
-
-            systemPrompt += `
+    if (preferredSubject === 'general') {
+      systemPrompt += `
 You are a helpful educational AI tutor.
 
 You may answer:
@@ -237,62 +220,51 @@ You may answer:
 - educational topics
 - beginner learning questions
 `;
-        }
-
-        // =========================
-        // AI REQUEST
-        // =========================
-
-        const completion =
-            await client.chat.completions.create({
-
-            model: 'llama-3.1-8b-instant',
-
-            messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt
-                },
-                {
-                    role: 'user',
-                    content: question
-                }
-            ],
-
-            temperature: 0.4,
-            max_tokens: 300
-        });
-
-        const aiResponse =
-            completion.choices[0].message.content;
-
-        return {
-
-            category: preferredSubject,
-            subject: preferredSubject,
-            questionType,
-            sentiment,
-            response: aiResponse
-        };
-
-    } catch (error) {
-
-        console.log(
-            'Groq AI Error:',
-            error.message
-        );
-
-        return {
-
-            category: preferredSubject,
-            subject: preferredSubject,
-            questionType,
-            sentiment,
-
-            response:
-                "⚠ AI service is temporarily unavailable. Please try again later."
-        };
     }
+
+    // =========================
+    // AI REQUEST
+    // =========================
+
+    const completion = await client.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: question,
+        },
+      ],
+
+      temperature: 0.4,
+      max_tokens: 300,
+    });
+
+    const aiResponse = completion.choices[0].message.content;
+
+    return {
+      category: preferredSubject,
+      subject: preferredSubject,
+      questionType,
+      sentiment,
+      response: aiResponse,
+    };
+  } catch (error) {
+    console.log('Groq AI Error:', error.message);
+
+    return {
+      category: preferredSubject,
+      subject: preferredSubject,
+      questionType,
+      sentiment,
+
+      response: '⚠ AI service is temporarily unavailable. Please try again later.',
+    };
+  }
 }
 
 // =========================
@@ -300,32 +272,23 @@ You may answer:
 // =========================
 
 function detectQuestionType(lowerQuestion) {
+  if (lowerQuestion.startsWith('what is') || lowerQuestion.startsWith('define')) {
+    return 'definition';
+  }
 
-    if (
-        lowerQuestion.startsWith('what is') ||
-        lowerQuestion.startsWith('define')
-    ) {
+  if (
+    lowerQuestion.startsWith('how') ||
+    lowerQuestion.startsWith('why') ||
+    lowerQuestion.includes('explain')
+  ) {
+    return 'explanation';
+  }
 
-        return 'definition';
-    }
+  if (lowerQuestion.includes('example')) {
+    return 'example';
+  }
 
-    if (
-        lowerQuestion.startsWith('how') ||
-        lowerQuestion.startsWith('why') ||
-        lowerQuestion.includes('explain')
-    ) {
-
-        return 'explanation';
-    }
-
-    if (
-        lowerQuestion.includes('example')
-    ) {
-
-        return 'example';
-    }
-
-    return 'general';
+  return 'general';
 }
 
 // =========================
@@ -333,48 +296,24 @@ function detectQuestionType(lowerQuestion) {
 // =========================
 
 function detectSentiment(lowerQuestion) {
+  const frustratedKeywords = ['frustrat', 'angry', 'upset', 'annoyed', 'hate this', 'not working'];
 
-    const frustratedKeywords = [
-        'frustrat',
-        'angry',
-        'upset',
-        'annoyed',
-        'hate this',
-        'not working'
-    ];
+  const confusedKeywords = ['confused', 'not sure', 'lost', 'unclear', 'stuck'];
 
-    const confusedKeywords = [
-        'confused',
-        'not sure',
-        'lost',
-        'unclear',
-        'stuck'
-    ];
+  if (frustratedKeywords.some((keyword) => lowerQuestion.includes(keyword))) {
+    return 'frustrated';
+  }
 
-    if (
-        frustratedKeywords.some(keyword =>
-            lowerQuestion.includes(keyword)
-        )
-    ) {
+  if (confusedKeywords.some((keyword) => lowerQuestion.includes(keyword))) {
+    return 'confused';
+  }
 
-        return 'frustrated';
-    }
-
-    if (
-        confusedKeywords.some(keyword =>
-            lowerQuestion.includes(keyword)
-        )
-    ) {
-
-        return 'confused';
-    }
-
-    return 'neutral';
+  return 'neutral';
 }
 
 module.exports = {
-    initializeAI,
-    generateResponse,
-    detectQuestionType,
-    detectSentiment
+  initializeAI,
+  generateResponse,
+  detectQuestionType,
+  detectSentiment,
 };

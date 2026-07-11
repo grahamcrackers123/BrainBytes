@@ -70,12 +70,11 @@ jobs:
 
       - name: Run Prettier formatting check
         working-directory: ./brainbytes-multi-container/frontend
-        run: npx prettier --check . || echo "Prettier found formatting issues. Run 'npm run format' to fix."
+        run: npx prettier --check .
 
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
 
       - name: Annotate Frontend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
@@ -85,12 +84,13 @@ jobs:
 
       - name: Install Backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm install
+        run: |
+          npm cache clean --force || true
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Lint Backend code
         working-directory: ./brainbytes-multi-container/backend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
           
       - name: Annotate Backend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
@@ -111,17 +111,6 @@ jobs:
     needs: lint 
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    services:
-      mongo:
-        image: mongo:4.4
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || mongo --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     strategy:
       matrix:
@@ -144,51 +133,56 @@ jobs:
         working-directory: ./brainbytes-multi-container/frontend
         run: npm install --legacy-peer-deps
 
-      - name: Start backend
+      - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
-          MONGO_URL: mongodb://localhost:27017/brainbytes
         run: |
-          npm install
-          touch backend.log
-          nohup npm start > backend.log 2>&1 &
-          sleep 10
-          echo "--- backend.log ---"
-          cat backend.log || echo "(log not available yet)"
-          echo "--- checking port ---"
-          curl -sv http://localhost:3000/ || echo "localhost:3000 not responding yet"
+          npm cache clean --force || true
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Start backend with Docker Compose
+        working-directory: ./brainbytes-multi-container
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MONGO_URL: mongodb://mongo:27017/brainbytes
+        run: |
+          echo "GROQ_API_KEY=$GROQ_API_KEY" >> backend/.env
+          echo "MONGO_URL=$MONGO_URL" >> backend/.env
+          docker compose up -d --build backend mongo
+          echo "--- waiting for backend to be ready ---"
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/health > /dev/null; then
+              echo "Backend is up"
+              ready=true
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          if [ "$ready" = false ]; then
+            echo "Backend failed to start within 60s"
+            docker compose logs
+            exit 1
+          fi
+          docker compose ps
 
       - name: Run frontend tests
         working-directory: ./brainbytes-multi-container/frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
-        run: npm test
-
-      - name: Show backend log after frontend tests
-        if: always()
-        working-directory: ./brainbytes-multi-container/backend
-        run: cat backend.log || echo "(no backend.log found)"
-
-      - name: Run Frontend tests with coverage
-        working-directory: ./brainbytes-multi-container/frontend
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
-        run: npm test -- --coverage || echo "No coverage script setup found"
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm test -- --coverage
 
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
         env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           MONGO_URL: mongodb://localhost:27017/brainbytes
-        run: npm test
+        run: npm test -- --coverage
 
-      - name: Run Backend tests with coverage
-        working-directory: ./brainbytes-multi-container/backend
-        env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
-          MONGO_URL: mongodb://localhost:27017/brainbytes
-        run: npm test -- --coverage || echo "No coverage script setup found"
+      - name: Stop Docker Compose
+        if: always()
+        working-directory: ./brainbytes-multi-container
+        run: docker compose down
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4
@@ -212,10 +206,15 @@ jobs:
           echo "See uploaded coverage-reports artifact for full coverage details." >> $GITHUB_STEP_SUMMARY
 
   build:
-    name: Build Project
+    name: Build ${{ matrix.service }} Image
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [frontend, backend]
 
     steps:
       - name: Check out code
@@ -225,58 +224,30 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create mock environment file
+        if: matrix.service == 'backend'
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
-          echo "NODE_ENV=test" >> brainbytes-multi-container/backend/.env
 
-      - name: Build frontend image
-        uses: docker/build-push-action@v4
+      - name: Build ${{ matrix.service }} image
+        uses: docker/build-push-action@v6
         with:
-          context: ./brainbytes-multi-container/frontend
+          context: ./brainbytes-multi-container/${{ matrix.service }}
           push: false
           load: true
-          tags: brainbytes-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            brainbytes-${{ matrix.service }}:${{ github.sha }}
+            brainbytes-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      - name: Build backend image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./brainbytes-multi-container/backend
-          push: false
-          load: true
-          tags: brainbytes-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Verify images exist
+      - name: Verify image exists
         run: |
-          echo "--- docker images ---"
-          docker images
-          docker image inspect brainbytes-frontend:latest > /dev/null
-          docker image inspect brainbytes-backend:latest > /dev/null
-
-      - name: Save Docker images as artifacts
-        run: |
-          mkdir -p /tmp/images
-          docker save brainbytes-frontend:latest -o /tmp/images/brainbytes-frontend.tar
-          docker save brainbytes-backend:latest -o /tmp/images/brainbytes-backend.tar
-
-      - name: Test Docker Compose setup
-        working-directory: ./brainbytes-multi-container
-        run: | 
-          docker compose up -d
-          docker compose ps
-          docker compose down
-
-      - name: Upload Docker images as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-images
-          path: /tmp/images/*.tar
+          docker image inspect brainbytes-${{ matrix.service }}:${{ github.sha }} > /dev/null
+          docker images brainbytes-${{ matrix.service }}
 
       - name: Save build artifacts
+        if: matrix.service == 'backend'
         uses: actions/upload-artifact@v4
         with:
           name: docker-outputs
@@ -288,7 +259,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: test
-    if: github.event_name != 'pull_request'
     needs: 
       - build
       - e2e
@@ -296,30 +266,36 @@ jobs:
     steps: 
       - name: Check out code
         uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: docker-outputs 
           path: brainbytes-multi-container
 
       - name: Node.js setup
         uses: actions/setup-node@v4
+        if: github.event_name != 'pull_request'
         with: 
           node-version: 22.x
 
       - name: Create mock environment file
+        if: github.event_name != 'pull_request'
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
 
       - name: Prepare deployment
+        if: github.event_name != 'pull_request'
         run: | 
           echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
           echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
           echo "DEPLOY_ENV=test" >> $GITHUB_ENV
 
       - name: Determine deployment target by branch
+        if: github.event_name != 'pull_request'
         run: |
           case "${{ github.ref_name }}" in
             main)
@@ -334,6 +310,7 @@ jobs:
           esac
 
       - name: Deploy application
+        if: github.event_name != 'pull_request'
         run: |
           echo "=== Deploying BrainBytes ==="
           echo "Environment:  test"
@@ -344,17 +321,27 @@ jobs:
         shell: bash
 
       - name: Verify Deployment
+        if: github.event_name != 'pull_request'
+        env:
+          DEPLOY_URL: ${{ vars.DEPLOY_URL || 'http://localhost:7000' }}
         run: |
           echo "Verifying deployment..."
           sleep 5
-          curl -s http://localhost:3000/health || echo "Service not available yet"
+          curl -sf "$DEPLOY_URL/health" && echo "Deployment verified successfully" || echo "Warning: Service not available at $DEPLOY_URL"
+
+      - name: Skip deployment for PR
+        if: github.event_name == 'pull_request'
+        run: echo "Deployment skipped for pull request — this is expected."
 
   security-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: build
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
     strategy:
+      max-parallel: 1
       matrix:
         node-version: [20.x, 22.x]
 
@@ -381,43 +368,55 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./brainbytes-multi-container/backend
-        run: npm install
+        run: |
+          npm cache clean --force || true
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Audit backend dependencies
         working-directory: ./brainbytes-multi-container/backend
         run: npm audit --json || true
 
       - name: Run Snyk to check Frontend vulnerabilities
-        uses: snyk/actions/node@master
-        with:
-          args: --severity-threshold=high brainbytes-multi-container/frontend
+        if: env.SNYK_TOKEN != ''
+        working-directory: ./brainbytes-multi-container/frontend
+        run: npx snyk test --severity-threshold=high || echo "::warning::Snyk frontend scan skipped (token may be invalid)"
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Run Snyk to check Backend vulnerabilities
-        uses: snyk/actions/node@master
-        with:
-          args: --severity-threshold=high brainbytes-multi-container/backend
+        if: env.SNYK_TOKEN != ''
+        working-directory: ./brainbytes-multi-container/backend
+        run: npx snyk test --severity-threshold=high || echo "::warning::Snyk backend scan skipped (token may be invalid)"
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        continue-on-error: true
 
       - name: Create mock environment file for scanning
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
 
-      - name: Download Docker image artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-images
-          path: /tmp/images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Load Docker images
-        run: |
-          docker load -i /tmp/images/brainbytes-frontend.tar
-          docker load -i /tmp/images/brainbytes-backend.tar
+      - name: Build frontend image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ./brainbytes-multi-container/frontend
+          push: false
+          load: true
+          tags: brainbytes-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Build backend image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ./brainbytes-multi-container/backend
+          push: false
+          load: true
+          tags: brainbytes-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
       - name: Scan Frontend Docker Images 
         uses: aquasecurity/trivy-action@master
@@ -443,10 +442,6 @@ jobs:
     timeout-minutes: 30
     needs: build
 
-    strategy:
-      matrix:
-        node-version: [20.x, 22.x]
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -454,26 +449,56 @@ jobs:
       - name: Node.js setup
         uses: actions/setup-node@v4
         with: 
-          node-version: ${{ matrix.node-version }}
+          node-version: 22.x
 
       - name: Create mock environment file
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image for E2E
+        uses: docker/build-push-action@v6
+        with:
+          context: ./brainbytes-multi-container/frontend
+          push: false
+          load: true
+          tags: brainbytes-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Build backend image for E2E
+        uses: docker/build-push-action@v6
+        with:
+          context: ./brainbytes-multi-container/backend
+          push: false
+          load: true
+          tags: brainbytes-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
       - name: Start app with Docker Compose
         working-directory: ./brainbytes-multi-container
         run: |
-          docker compose up -d --build
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
           echo "--- waiting for frontend to be ready ---"
+          ready=false
           for i in $(seq 1 30); do
             if curl -sf http://localhost:7000 > /dev/null; then
               echo "Frontend is up"
+              ready=true
               break
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
+          if [ "$ready" = false ]; then
+            echo "Frontend failed to start within 60s"
+            docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
+            exit 1
+          fi
           docker compose ps
 
       - name: Install End-to-End Test dependencies
@@ -481,6 +506,7 @@ jobs:
         run: npm install --legacy-peer-deps
             
       - name: Install Playwright Browsers
+        working-directory: ./brainbytes-multi-container/e2e-tests
         run: npx playwright install --with-deps
 
       - name: Run End-to-End Tests
@@ -506,12 +532,12 @@ jobs:
       - name: Show app logs on failure
         if: failure()
         working-directory: ./brainbytes-multi-container
-        run: docker compose logs
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
   
       - name: Stop Docker Compose
         if: always()
         working-directory: ./brainbytes-multi-container
-        run: docker compose down
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down
 
   notify:
     name: Send Status Notification

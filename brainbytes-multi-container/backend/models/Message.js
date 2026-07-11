@@ -5,47 +5,30 @@ const messageSchema = new mongoose.Schema({
 
   isUser: {
     type: Boolean,
-    default: true
+    default: true,
   },
 
   subject: {
     type: String,
-    enum: [
-      'general',
-      'math',
-      'science',
-      'history',
-      'english',
-      'technology',
-      'geography'
-    ],
-    default: 'general'
+    enum: ['general', 'math', 'science', 'history', 'english', 'technology', 'geography'],
+    default: 'general',
   },
 
   questionType: {
     type: String,
-    enum: [
-      'definition',
-      'explanation',
-      'example',
-      'general'
-    ],
-    default: 'general'
+    enum: ['definition', 'explanation', 'example', 'general'],
+    default: 'general',
   },
 
   sentiment: {
     type: String,
-    enum: [
-      'neutral',
-      'confused',
-      'frustrated'
-    ],
-    default: 'neutral'
+    enum: ['neutral', 'confused', 'frustrated'],
+    default: 'neutral',
   },
 
   category: {
     type: String,
-    default: 'general'
+    default: 'general',
   },
 
   // =========================
@@ -54,7 +37,7 @@ const messageSchema = new mongoose.Schema({
 
   chatId: {
     type: String,
-    required: true
+    required: true,
   },
 
   // =========================
@@ -64,14 +47,13 @@ const messageSchema = new mongoose.Schema({
   username: {
     type: String,
     trim: true,
-    default: ''
+    default: '',
   },
 
   createdAt: {
     type: Date,
-    default: Date.now
-  }
-
+    default: Date.now,
+  },
 });
 
 module.exports = mongoose.model('Message', messageSchema);

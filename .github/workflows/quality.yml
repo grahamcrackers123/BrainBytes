@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [20.x, 22.x]
 
     steps:
       - name: Check out code
@@ -36,7 +36,6 @@ jobs:
       - name: Lint Frontend code
         working-directory: ./brainbytes-multi-container/frontend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
 
       - name: Annotate Frontend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
@@ -51,8 +50,7 @@ jobs:
       - name: Lint Backend code
         working-directory: ./brainbytes-multi-container/backend
         run: npm run lint:js -- --format json --output-file eslint-report.json
-        continue-on-error: true
-          
+
       - name: Annotate Backend ESLint results
         uses: ataylorme/eslint-annotate-action@v2
         with: 
