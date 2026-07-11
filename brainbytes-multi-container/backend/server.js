@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const aiService = require('./aiService.js');
 
 const client = require('prom-client');
@@ -62,6 +63,22 @@ app.use(
 );
 app.use(express.json());
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 app.use((req, res, next) => {
   res.on('finish', () => {
     httpRequestCounter.inc({ method: req.method, route: req.path, status: res.statusCode });
@@ -112,11 +129,18 @@ app.get('/metrics', async (req, res) => {
 });
 
 // Get messages
-app.get('/api/messages', async (req, res) => {
+app.get('/api/messages', apiLimiter, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
     const chatId = req.query.chatId;
     const username = req.query.username;
+
+    if (chatId && typeof chatId !== 'string') {
+      return res.status(400).json({ error: 'Invalid chatId parameter' });
+    }
+    if (username && typeof username !== 'string') {
+      return res.status(400).json({ error: 'Invalid username parameter' });
+    }
 
     const filter = {};
     if (chatId) filter.chatId = chatId;
@@ -132,7 +156,7 @@ app.get('/api/messages', async (req, res) => {
 });
 
 // Send message and get AI response
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', mutationLimiter, async (req, res) => {
   activeSessionsGauge.inc();
   try {
     const text = (req.body.text || '').trim();
@@ -220,7 +244,7 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // Create profile
-app.post('/api/profiles', async (req, res) => {
+app.post('/api/profiles', mutationLimiter, async (req, res) => {
   try {
     const profile = new UserProfile(req.body);
     await profile.save();
@@ -231,7 +255,7 @@ app.post('/api/profiles', async (req, res) => {
 });
 
 // Get profiles
-app.get('/api/profiles', async (req, res) => {
+app.get('/api/profiles', apiLimiter, async (req, res) => {
   try {
     const { subjects } = req.query;
     let filter = {};
@@ -248,7 +272,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // Get profile by ID
-app.get('/api/profiles/:id', async (req, res) => {
+app.get('/api/profiles/:id', apiLimiter, async (req, res) => {
   try {
     const profile = await UserProfile.findById(req.params.id);
     if (!profile) {
@@ -262,9 +286,16 @@ app.get('/api/profiles/:id', async (req, res) => {
 });
 
 // Update profile
-app.put('/api/profiles/:id', async (req, res) => {
+app.put('/api/profiles/:id', mutationLimiter, async (req, res) => {
   try {
-    const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, {
+    const allowedFields = ['name', 'email', 'preferredSubjects'];
+    const sanitizedBody = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        sanitizedBody[field] = req.body[field];
+      }
+    }
+    const profile = await UserProfile.findByIdAndUpdate(req.params.id, sanitizedBody, {
       new: true,
       runValidators: true,
     });
@@ -278,7 +309,7 @@ app.put('/api/profiles/:id', async (req, res) => {
 });
 
 // Delete profile
-app.delete('/api/profiles/:id', async (req, res) => {
+app.delete('/api/profiles/:id', mutationLimiter, async (req, res) => {
   try {
     const profile = await UserProfile.findByIdAndDelete(req.params.id);
     if (!profile) {
@@ -291,7 +322,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
 });
 
 // Create material
-app.post('/api/materials', async (req, res) => {
+app.post('/api/materials', mutationLimiter, async (req, res) => {
   try {
     const material = new LearningMaterial(req.body);
     await material.save();
@@ -302,7 +333,7 @@ app.post('/api/materials', async (req, res) => {
 });
 
 // Get materials
-app.get('/api/materials', async (req, res) => {
+app.get('/api/materials', apiLimiter, async (req, res) => {
   try {
     const filter = {};
     if (req.query.subject) {
@@ -320,7 +351,7 @@ app.get('/api/materials', async (req, res) => {
 });
 
 // Get material by ID
-app.get('/api/materials/:id', async (req, res) => {
+app.get('/api/materials/:id', apiLimiter, async (req, res) => {
   try {
     const material = await LearningMaterial.findById(req.params.id);
     if (!material) {

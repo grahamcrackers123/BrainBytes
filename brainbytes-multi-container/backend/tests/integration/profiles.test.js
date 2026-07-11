@@ -2,11 +2,20 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { connectMongo, requireMongo, disconnectMongo } = require('./helpers');
 
 const UserProfile = require('../../models/UserProfile');
 
 let app;
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
 
 beforeAll(async () => {
   await connectMongo('profiles integration tests');
@@ -52,9 +61,16 @@ beforeAll(async () => {
     }
   });
 
-  app.put('/api/profiles/:id', async (req, res) => {
+  app.put('/api/profiles/:id', apiLimiter, async (req, res) => {
     try {
-      const profile = await UserProfile.findByIdAndUpdate(req.params.id, req.body, {
+      const allowedFields = ['name', 'email', 'preferredSubjects'];
+      const sanitizedBody = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          sanitizedBody[field] = req.body[field];
+        }
+      }
+      const profile = await UserProfile.findByIdAndUpdate(req.params.id, sanitizedBody, {
         new: true,
         runValidators: true,
       });
