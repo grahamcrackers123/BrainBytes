@@ -49,11 +49,31 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./recording_rules.yml:/etc/prometheus/recording_rules.yml
-      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - ./prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
     depends_on:
       - backend
     restart: unless-stopped
 
+  grafana:
+    image: grafana/grafana:9.5.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=brainbytes
+      - GF_USERS_ALLOW_SIGN_UP=false
+    # networks:
+    #   - app-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   mongo-data:
+  grafana_data:
