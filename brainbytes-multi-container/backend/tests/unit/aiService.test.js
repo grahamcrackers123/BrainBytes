@@ -1,7 +1,7 @@
-const {
-  detectQuestionType,
-  detectSentiment,
-} = require('../../aiService');
+process.env.GROQ_API_KEY = process.env.GROQ_API_KEY || 'gsk-test-dummy-key';
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key';
+
+const { detectQuestionType, detectSentiment } = require('../../aiService');
 
 describe('detectQuestionType', () => {
   test('returns "definition" for "what is" questions', () => {

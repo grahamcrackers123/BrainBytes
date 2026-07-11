@@ -8,6 +8,28 @@ BrainBytes is deployed on **Railway.app** using its free tier. Railway is a clou
 
 ## 1. Railway.app Project Setup
 
+### Infrastructure as Code (Recommended)
+
+The `railway.toml` file at the repository root defines all services declaratively:
+
+```toml
+# railway.toml — single source of truth for cloud configuration
+```
+
+> See `railway.toml` in the repo root for the complete configuration. This enables recreating the entire cloud environment via CLI without manual dashboard configuration.
+
+**To deploy from the IaC config:**
+
+```bash
+railway up              # Deploy all services
+railway up --service backend   # Deploy only backend
+railway up --service frontend  # Deploy only frontend
+```
+
+### Manual Setup (Alternative)
+
+If not using IaC, follow these steps:
+
 ### Step 1: Create a Railway Account
 
 1. Go to https://railway.app/
@@ -32,7 +54,7 @@ For each service in Railway dashboard → **Settings** → **Health Checks**:
 
 | Service | Path | Period | Threshold |
 |---------|------|--------|-----------|
-| Backend | `/` | 30s | 3 failures |
+| Backend | `/health` | 30s | 3 failures |
 | Frontend | `/` | 30s | 3 failures |
 
 ### Step 4: Configure Automatic Restarts
@@ -82,24 +104,25 @@ Add these in Railway dashboard → **Variables** for each service:
 
 ### 3.2 CORS Configuration
 
-The backend already has CORS configured in `server.js`:
+The backend uses environment-aware CORS with origin whitelisting (see `server.js`):
 
 ```js
-app.use(cors());
-```
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:7000', 'http://localhost:3000'];
 
-For production, you can restrict CORS to specific origins in Railway:
-
-```js
-const cors = require('cors');
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
 }));
 ```
 
-Add `CORS_ORIGIN=https://your-app.railway.app` to backend environment variables.
+For production, set `CORS_ORIGIN` in Railway backend environment variables to the frontend URL.
 
 ### 3.3 Network Security
 
@@ -162,19 +185,22 @@ Railway provides:
 
 ```
 BrainBytes/
+├── railway.toml                    # IaC — Infrastructure as Code config
 ├── brainbytes-multi-container/
 │   ├── backend/
-│   │   ├── Dockerfile          # Already exists
+│   │   ├── Dockerfile
 │   │   ├── package.json
 │   │   └── ...
 │   ├── frontend/
-│   │   ├── Dockerfile          # Already exists
+│   │   ├── Dockerfile
 │   │   ├── package.json
 │   │   └── ...
-│   └── docker-compose.yml      # For local dev
+│   ├── docker-compose.yml          # Local development
+│   ├── docker-compose.staging.yml  # Staging environment
+│   └── docker-compose.prod.yml     # Production environment
 ├── .github/
 │   └── workflows/
-│       └── deploy-railway.yml  # Railway deployment workflow
+│       └── main.yml                # CI/CD pipeline
 ```
 
 ### 5.2 Railway GitHub Integration
@@ -182,41 +208,17 @@ BrainBytes/
 Railway automatically deploys when you push to `main`:
 1. Connect your GitHub repo to Railway
 2. Select the `main` branch for auto-deploy
-3. Railway builds using the Dockerfile or Nixpacks
+3. Railway uses the `railway.toml` config or auto-detects Dockerfiles
 
-### 5.3 nixpacks.toml (for better build control)
+### 5.3 Environment Isolation
 
-Create `brainbytes-multi-container/backend/nixpacks.toml`:
+Three environments are defined through Docker Compose:
 
-```toml
-[phases.setup]
-nixPkgs = ['nodejs_22', 'curl']
-
-[phases.install]
-cmds = ['npm install']
-
-[phases.build]
-cmds = ['echo "No build step needed"']
-
-[start]
-cmd = 'npm start'
-```
-
-Create `brainbytes-multi-container/frontend/nixpacks.toml`:
-
-```toml
-[phases.setup]
-nixPkgs = ['nodejs_22']
-
-[phases.install]
-cmds = ['npm install --legacy-peer-deps']
-
-[phases.build]
-cmds = ['npm run build']
-
-[start]
-cmd = 'npm run start'
-```
+| Environment | Compose File | Purpose |
+|---|---|---|
+| Development | `docker-compose.yml` | Local dev with hot reload and volume mounts |
+| Staging | `docker-compose.staging.yml` | Pre-production validation on separate ports (7001/5001) |
+| Production | `docker-compose.prod.yml` | Production with health checks, no source mounts, strict restart policy |
 
 ---
 
@@ -227,9 +229,9 @@ cmd = 'npm run start'
 | Setting | Configuration |
 |---------|--------------|
 | Source | `brainbytes-multi-container/backend` |
-| Build | Dockerfile or Nixpacks |
+| Build | Dockerfile or `railway.toml` |
 | Port | 3000 |
-| Health Check | `GET /` |
+| Health Check | `GET /health` |
 | Restart Policy | Always |
 
 ### 6.2 Frontend Service
@@ -237,7 +239,7 @@ cmd = 'npm run start'
 | Setting | Configuration |
 |---------|--------------|
 | Source | `brainbytes-multi-container/frontend` |
-| Build | Dockerfile or Nixpacks |
+| Build | Dockerfile or `railway.toml` |
 | Port | 3000 |
 | Health Check | `GET /` |
 | Restart Policy | Always |
@@ -298,13 +300,19 @@ GROQ_API_KEY is not set
 → Add GROQ_API_KEY to backend environment variables
 ```
 
-### Deploy to Railway workflow fails
+### Deploy via Railway CLI
 
-The `deploy-railway.yml` GitHub Actions workflow uses `railway up` via CLI.
-If it fails:
+The `railway.toml` file enables deployment via CLI:
+
+```bash
+railway up              # Deploy all services defined in railway.toml
+railway up --service backend   # Deploy backend only
+railway up --service frontend  # Deploy frontend only
+```
+
+If using manual setup without IaC:
 
 - **RAILWAY_TOKEN expired**: Generate a new token at https://railway.app/account/tokens
-- **Build fails**: Check Railway build logs for the specific error
 
 **Recommended**: Use Railway's auto-deploy from GitHub instead:
 1. Railway dashboard → Project → Settings → GitHub

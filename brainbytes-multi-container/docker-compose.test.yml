@@ -1,6 +1,6 @@
 services:
   mongo-test:
-    image: mongo:4.4
+    image: mongo:7.0
     restart: unless-stopped
 
   backend-test:

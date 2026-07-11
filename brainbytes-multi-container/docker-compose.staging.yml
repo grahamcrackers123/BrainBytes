@@ -1,0 +1,39 @@
+version: '3'
+services:
+  frontend:
+    image: brainbytes-frontend:latest
+    ports:
+      - "7001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5001
+      - NODE_ENV=staging
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: sh -c "npm install --legacy-peer-deps && npm run build && npm start"
+
+  backend:
+    image: brainbytes-backend:latest
+    ports:
+      - "5001:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=staging
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-staging-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo-staging-data:
