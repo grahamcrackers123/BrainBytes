@@ -142,7 +142,7 @@ jobs:
       - name: Start backend with Docker Compose
         working-directory: ./brainbytes-multi-container
         env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           MONGO_URL: mongodb://mongo:27017/brainbytes
         run: |
           echo "GROQ_API_KEY=$GROQ_API_KEY" >> backend/.env
@@ -175,7 +175,7 @@ jobs:
       - name: Run backend tests
         working-directory: ./brainbytes-multi-container/backend
         env:
-          GROQ_API_KEY: gsk-test-dummy-key-for-ci
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           MONGO_URL: mongodb://localhost:27017/brainbytes
         run: npm test -- --coverage
 
@@ -364,6 +364,7 @@ jobs:
         run: npm audit --json || true
 
       - name: Run Snyk to check Frontend vulnerabilities
+        if: ${{ secrets.SNYK_TOKEN != '' }}
         uses: snyk/actions/node@master
         with:
           args: --severity-threshold=high brainbytes-multi-container/frontend
@@ -371,6 +372,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk to check Backend vulnerabilities
+        if: ${{ secrets.SNYK_TOKEN != '' }}
         uses: snyk/actions/node@master
         with:
           args: --severity-threshold=high brainbytes-multi-container/backend
