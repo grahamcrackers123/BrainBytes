@@ -143,8 +143,8 @@ app.get('/api/messages', apiLimiter, async (req, res) => {
     }
 
     const filter = {};
-    if (chatId) filter.chatId = chatId;
-    if (username) filter.username = username;
+    if (chatId) filter.chatId = { $eq: chatId };
+    if (username) filter.username = { $eq: username };
 
     const messages = await Message.find(filter).sort({ createdAt: 1 }).limit(limit);
 
@@ -292,10 +292,19 @@ app.put('/api/profiles/:id', mutationLimiter, async (req, res) => {
     const sanitizedBody = {};
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
-        sanitizedBody[field] = req.body[field];
+        if (field === 'preferredSubjects') {
+          if (!Array.isArray(req.body[field])) {
+            return res.status(400).json({ error: 'Invalid preferredSubjects format' });
+          }
+          sanitizedBody[field] = req.body[field].filter((item) => typeof item === 'string');
+        } else if (typeof req.body[field] !== 'string') {
+          return res.status(400).json({ error: `Invalid type for ${field}` });
+        } else {
+          sanitizedBody[field] = req.body[field];
+        }
       }
     }
-    const profile = await UserProfile.findByIdAndUpdate(req.params.id, sanitizedBody, {
+    const profile = await UserProfile.findByIdAndUpdate(req.params.id, { $set: sanitizedBody }, {
       new: true,
       runValidators: true,
     });
