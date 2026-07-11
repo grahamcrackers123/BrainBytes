@@ -149,14 +149,21 @@ jobs:
           echo "MONGO_URL=$MONGO_URL" >> backend/.env
           docker compose up -d --build backend mongo
           echo "--- waiting for backend to be ready ---"
+          ready=false
           for i in $(seq 1 30); do
             if curl -sf http://localhost:5000/health > /dev/null; then
               echo "Backend is up"
+              ready=true
               break
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
+          if [ "$ready" = false ]; then
+            echo "Backend failed to start within 60s"
+            docker compose logs
+            exit 1
+          fi
           docker compose ps
 
       - name: Run frontend tests
@@ -464,14 +471,21 @@ jobs:
         run: |
           docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
           echo "--- waiting for frontend to be ready ---"
+          ready=false
           for i in $(seq 1 30); do
             if curl -sf http://localhost:7000 > /dev/null; then
               echo "Frontend is up"
+              ready=true
               break
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
+          if [ "$ready" = false ]; then
+            echo "Frontend failed to start within 60s"
+            docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
+            exit 1
+          fi
           docker compose ps
 
       - name: Install End-to-End Test dependencies
@@ -479,6 +493,7 @@ jobs:
         run: npm install --legacy-peer-deps
             
       - name: Install Playwright Browsers
+        working-directory: ./brainbytes-multi-container/e2e-tests
         run: npx playwright install --with-deps
 
       - name: Run End-to-End Tests

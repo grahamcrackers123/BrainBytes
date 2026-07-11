@@ -45,14 +45,21 @@ jobs:
           echo "MONGO_URL=$MONGO_URL" >> backend/.env
           docker compose up -d --build backend mongo
           echo "--- waiting for backend to be ready ---"
+          ready=false
           for i in $(seq 1 30); do
             if curl -sf http://localhost:5000/health > /dev/null; then
               echo "Backend is up"
+              ready=true
               break
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
+          if [ "$ready" = false ]; then
+            echo "Backend failed to start within 60s"
+            docker compose logs
+            exit 1
+          fi
           docker compose ps
 
       - name: Run frontend tests
