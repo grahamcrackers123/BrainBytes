@@ -1,0 +1,296 @@
+{
+  "id": null,
+  "uid": "bb-resource-optimization",
+  "title": "BrainBytes - Resource Optimization",
+  "tags": [
+    "brainbytes",
+    "resources"
+  ],
+  "timezone": "Asia/Manila",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Backend CPU Usage (% of one core)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"backend\"}[5m]) * 100",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 2,
+      "title": "Backend Memory Usage (trend - watch for leaks)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"backend\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "description": "A steadily climbing line with no plateau across hours suggests a memory leak."
+    },
+    {
+      "id": 3,
+      "title": "Resource Efficiency (req/s per % CPU)",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(brainbytes_http_requests_total[5m])) / (rate(process_cpu_seconds_total{job=\"backend\"}[5m]) * 100)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {},
+      "description": "Higher is better: more requests served per unit of CPU spent"
+    },
+    {
+      "id": 4,
+      "title": "Active Sessions (concurrent load)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 6,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "brainbytes_active_sessions",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "title": "Memory per Active Session",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"backend\"} / clamp_min(brainbytes_active_sessions, 1)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "description": "Rough proxy for memory cost per concurrent chat request"
+    },
+    {
+      "id": 6,
+      "title": "Requests vs CPU (correlation)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(brainbytes_http_requests_total[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "req/s"
+        },
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"backend\"}[5m]) * 100",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "cpu %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 7,
+      "title": "Requests vs Memory (correlation)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(brainbytes_http_requests_total[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "req/s"
+        },
+        {
+          "expr": "process_resident_memory_bytes{job=\"backend\"}",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "legendFormat": "memory bytes"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Annotations & Alerts",
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "builtIn": 1,
+        "hide": true,
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": []
+}
