@@ -3,11 +3,27 @@ const os = require('os');
 const { fork } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(express.json());
 
 const API_URL = process.env.BRAINBYTES_URL || 'http://localhost:5000';
+
+const triggerLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,              // 5 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many trigger requests - wait a minute before trying again.'
+});
+
+app.post('/alert', (req, res) => {
+  console.log('=== ALERT RECEIVED ===');
+  console.log(JSON.stringify(req.body, null, 2));
+  console.log('======================');
+  res.status(200).end();
+});
 
 // webhook at http://localhost:8080/alert
 app.post('/alert', (req, res) => {
@@ -30,7 +46,7 @@ const workerScript = `
 const workerPath = path.join(__dirname, '_cpu_worker.js');
 fs.writeFileSync(workerPath, workerScript);
 
-app.get('/trigger-cpu', (req, res) => {
+app.get('/trigger-cpu', triggerLimiter, (req, res) => {
   const duration = parseInt(req.query.duration || '60', 10);
   const cores = os.cpus().length;
   console.log(`Triggering high CPU across ${cores} core(s) for ${duration} second(s)...`);
@@ -42,7 +58,9 @@ app.get('/trigger-cpu', (req, res) => {
   res.send(`Triggered high CPU for ${duration} seconds across ${cores} worker process(es).`);
 });
 
-app.get('/trigger-errors', async (req, res) => {
+
+
+app.get('/trigger-errors', triggerLimiter, async (req, res) => {
   console.log('Simulating error spike...');
   const count = parseInt(req.query.count || '20', 10);
 
