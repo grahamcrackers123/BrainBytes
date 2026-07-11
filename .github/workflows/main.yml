@@ -259,7 +259,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: test
-    if: github.event_name != 'pull_request'
     needs: 
       - build
       - e2e
@@ -267,30 +266,36 @@ jobs:
     steps: 
       - name: Check out code
         uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: docker-outputs 
           path: brainbytes-multi-container
 
       - name: Node.js setup
         uses: actions/setup-node@v4
+        if: github.event_name != 'pull_request'
         with: 
           node-version: 22.x
 
       - name: Create mock environment file
+        if: github.event_name != 'pull_request'
         run: |
           mkdir -p brainbytes-multi-container/backend
           touch brainbytes-multi-container/backend/.env
 
       - name: Prepare deployment
+        if: github.event_name != 'pull_request'
         run: | 
           echo "DEPLOY_TIME=$(date)" >> $GITHUB_ENV
           echo "DEPLOY_SHA=${{ github.sha }}" >> $GITHUB_ENV
           echo "DEPLOY_ENV=test" >> $GITHUB_ENV
 
       - name: Determine deployment target by branch
+        if: github.event_name != 'pull_request'
         run: |
           case "${{ github.ref_name }}" in
             main)
@@ -305,6 +310,7 @@ jobs:
           esac
 
       - name: Deploy application
+        if: github.event_name != 'pull_request'
         run: |
           echo "=== Deploying BrainBytes ==="
           echo "Environment:  test"
@@ -315,12 +321,17 @@ jobs:
         shell: bash
 
       - name: Verify Deployment
+        if: github.event_name != 'pull_request'
         env:
           DEPLOY_URL: ${{ vars.DEPLOY_URL || 'http://localhost:7000' }}
         run: |
           echo "Verifying deployment..."
           sleep 5
           curl -sf "$DEPLOY_URL/health" && echo "Deployment verified successfully" || echo "Warning: Service not available at $DEPLOY_URL"
+
+      - name: Skip deployment for PR
+        if: github.event_name == 'pull_request'
+        run: echo "Deployment skipped for pull request — this is expected."
 
   security-scan:
     runs-on: ubuntu-latest
