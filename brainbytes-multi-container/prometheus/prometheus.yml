@@ -11,9 +11,11 @@ scrape_configs:
     scrape_timeout: 4s
     sample_limit: 1000
     scheme: https
+    # scheme: http
     metrics_path: /metrics
     static_configs:
       - targets: ['brainbytes-test-production.up.railway.app']
+      # - targets: ['backend:3000']
     relabel_configs:
       - source_labels: [__address__]
         regex: '(.*):.*'
