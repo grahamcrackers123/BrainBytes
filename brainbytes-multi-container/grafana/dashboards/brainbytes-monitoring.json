@@ -1,159 +1,113 @@
 {
-  "id": null,
-  "uid": "bb-main-dashboard",
-  "title": "BrainBytes - Monitoring Dashboard",
-  "tags": [
-    "brainbytes",
-    "main"
-  ],
-  "timezone": "Asia/Manila",
-  "schemaVersion": 38,
-  "version": 1,
-  "refresh": "30s",
-  "time": {
-    "from": "now-6h",
-    "to": "now"
-  },
-  "templating": {
-    "list": [
-      {
-        "name": "route",
-        "type": "query",
-        "label": "Route",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "Prometheus"
-        },
-        "query": "label_values(brainbytes_http_requests_total, route)",
-        "refresh": 2,
-        "multi": true,
-        "includeAll": true,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        }
-      }
-    ]
-  },
   "annotations": {
     "list": [
       {
-        "name": "Annotations & Alerts",
+        "builtIn": 1,
         "datasource": {
           "type": "grafana",
           "uid": "-- Grafana --"
         },
         "enable": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "builtIn": 1,
         "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
         "type": "dashboard"
-      },
-      {
-        "name": "Deployments",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "Prometheus"
-        },
-        "enable": true,
-        "iconColor": "rgba(255, 96, 96, 1)",
-        "tagKeys": "deployment",
-        "titleFormat": "Deployment",
-        "type": "tags"
       }
     ]
   },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 13,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
-      "id": 1,
-      "title": "App Status",
-      "type": "stat",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
       },
-      "targets": [
-        {
-          "expr": "up{job=\"backend\"}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          }
-        }
-      ],
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": 0
+                "color": "green",
+                "value": null
               },
               {
-                "color": "green",
-                "value": 1
+                "color": "red",
+                "value": 80
               }
             ]
           }
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
       "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": false
         },
-        "textMode": "value_and_name",
-        "graphMode": "none"
+        "textMode": "auto"
       },
-      "description": "1 = backend reachable, 0 = down"
-    },
-    {
-      "id": 2,
-      "title": "CPU Usage",
-      "type": "gauge",
-      "gridPos": {
-        "x": 4,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
-          "expr": "rate(process_cpu_seconds_total{job=\"backend\"}[5m]) * 100",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
-          }
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"backend\"}",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
         }
       ],
+      "title": "Application Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 91,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
-                "value": 0
+                "value": null
               },
               {
-                "color": "yellow",
+                "color": "#EAB839",
                 "value": 70
               },
               {
@@ -161,52 +115,68 @@
                 "value": 90
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
       "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "description": "% of one CPU core used by the backend process"
-    },
-    {
-      "id": 3,
-      "title": "Memory Usage",
-      "type": "gauge",
-      "gridPos": {
-        "x": 10,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job=\"backend\"}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
-          }
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
         }
       ],
+      "title": "CPU Usage",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
+      "description": "",
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
-                "value": 0
+                "value": null
               },
               {
-                "color": "yellow",
+                "color": "#EAB839",
                 "value": 300000000
               },
               {
@@ -214,291 +184,654 @@
                 "value": 450000000
               }
             ]
-          }
+          },
+          "unit": "bytes"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 10,
+        "y": 0
+      },
+      "id": 4,
       "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "description": "Resident memory of the backend process. Yellow/red thresholds are starting estimates (300MB/450MB) - adjust once you know your actual free-tier memory ceiling."
-    },
-    {
-      "id": 4,
-      "title": "Error Rate",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 8,
-        "h": 4
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
-          "expr": "sum(rate(brainbytes_http_requests_total{status=~\"[45]..\", route=~\"$route\"}[5m])) / sum(rate(brainbytes_http_requests_total{route=~\"$route\"}[5m])) * 100",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
           },
-          "legendFormat": "error %"
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
         }
       ],
+      "title": "Memory Usage",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 2
+                "value": null
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 80
               }
             ]
           }
         },
         "overrides": []
       },
-      "options": {},
-      "description": "4xx+5xx as a percentage of total requests"
-    },
-    {
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 0
+      },
       "id": 5,
-      "title": "Request Count",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 8,
-        "h": 5
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
-          "expr": "sum(rate(brainbytes_http_requests_total{route=~\"$route\"}[5m]))",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
           },
-          "legendFormat": "requests/sec"
+          "editorMode": "code",
+          "expr": "sum(rate(brainbytes_http_requests_total{status=~\"4..|5..\"}[5m])) / sum(rate(brainbytes_http_requests_total[5m])) * 100",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
         }
       ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {},
-      "description": "Total request rate across all routes"
+      "title": "Error Rate",
+      "type": "gauge"
     },
     {
-      "id": 6,
-      "title": "Active Sessions (concurrent requests)",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 8,
-        "y": 4,
-        "w": 8,
-        "h": 5
-      },
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
       },
-      "targets": [
-        {
-          "expr": "brainbytes_active_sessions",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "legendFormat": "in-flight chat requests"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {},
-      "description": "Number of chat requests currently being processed - a proxy for concurrent load, not persistent user sessions"
-    },
-    {
-      "id": 7,
-      "title": "Response Time Trends (AI, p95)",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 4,
-        "w": 8,
-        "h": 5
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, rate(brainbytes_ai_response_duration_seconds_bucket[5m]))",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "legendFormat": "p95 latency"
-        }
-      ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "options": {},
-      "description": "95th percentile AI response time - the slowest-typical tutoring response"
-    },
-    {
-      "id": 8,
-      "title": "API Response Distribution (heatmap)",
-      "type": "heatmap",
       "gridPos": {
+        "h": 8,
+        "w": 6,
         "x": 0,
-        "y": 9,
-        "w": 12,
-        "h": 6
+        "y": 7
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "targets": [
         {
-          "expr": "sum(rate(brainbytes_ai_response_duration_seconds_bucket[5m])) by (le)",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
-          }
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(brainbytes_http_requests_total[5m]))",
+          "legendFormat": "requests/sec",
+          "range": true,
+          "refId": "A"
         }
       ],
+      "title": "Request Count",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 25,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 6,
+        "y": 7
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "brainbytes_active_sessions",
+          "legendFormat": "chat requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Sessions",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 7
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, rate(brainbytes_ai_response_duration_seconds_bucket[5m]))",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "AI Response Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 15
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time(\r\nsum(rate(brainbytes_http_requests_total[5m]))\r\n[24h:]\r\n)",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Peak Request Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 6,
+        "y": 15
+      },
+      "id": 9,
       "options": {
         "calculate": false,
+        "cellGap": 1,
         "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
           "mode": "scheme",
-          "scheme": "Spectral"
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Oranges",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false
         }
       },
-      "description": "Distribution and time-of-day patterns of AI response latency - highlights when responses are consistently slower"
-    },
-    {
-      "id": 9,
-      "title": "Recent Errors (detailed log)",
-      "type": "table",
-      "gridPos": {
-        "x": 12,
-        "y": 9,
-        "w": 12,
-        "h": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
-          "expr": "topk(15, sum by (route, status, method) (increase(brainbytes_http_requests_total{status=~\"[45]..\"}[1h])))",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
+          "expr": "rate(brainbytes_ai_response_duration_seconds_bucket[5m])",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "API Response Distribution",
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
+        },
         "overrides": []
       },
-      "options": {},
-      "description": "Most frequent errors in the last hour, by route/status/method"
-    },
-    {
-      "id": 10,
-      "title": "Service Info & 24h Historical Stats",
-      "type": "table",
       "gridPos": {
-        "x": 0,
-        "y": 15,
-        "w": 24,
-        "h": 6
+        "h": 8,
+        "w": 11,
+        "x": 13,
+        "y": 15
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "frameIndex": 3,
+        "showHeader": true
       },
+      "pluginVersion": "9.5.2",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
+          },
+          "editorMode": "code",
           "expr": "up{job=\"backend\"}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "legendFormat": "backend_up"
+          "legendFormat": "Backend Status",
+          "range": true,
+          "refId": "A"
         },
         {
-          "expr": "sum(increase(brainbytes_http_requests_total[24h]))",
-          "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
           },
-          "legendFormat": "requests_24h"
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes",
+          "hide": false,
+          "legendFormat": "Memory Usage",
+          "range": true,
+          "refId": "B"
         },
         {
-          "expr": "avg_over_time(process_resident_memory_bytes{job=\"backend\"}[24h])",
-          "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
           },
-          "legendFormat": "avg_memory_24h"
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total[5m])",
+          "hide": false,
+          "legendFormat": "CPU Usage",
+          "range": true,
+          "refId": "C"
         },
         {
-          "expr": "max_over_time(process_cpu_seconds_total{job=\"backend\"}[24h])",
-          "refId": "D",
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "dbbb5e0f-1f16-47d7-8d6c-1e513d073bd4"
           },
-          "legendFormat": "peak_cpu_24h"
+          "editorMode": "code",
+          "expr": "brainbytes_active_sessions",
+          "hide": false,
+          "legendFormat": "Active Sessions",
+          "range": true,
+          "refId": "D"
         }
       ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {},
-      "description": "Backend service status plus 24h rollups. Limited to process-level metrics - no per-container breakdown exists without cAdvisor/node-exporter in this stack."
+      "title": "System Information",
+      "type": "table"
     }
-  ]
+  ],
+  "refresh": "",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "BrainBytes",
+  "uid": "a14c62e2-661f-4b26-a8b7-99b0fcfb18d0",
+  "version": 5,
+  "weekStart": ""
 }
