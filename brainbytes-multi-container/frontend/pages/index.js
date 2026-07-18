@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -346,7 +346,7 @@ export default function Home() {
         fontFamily: "'Poppins', sans-serif",
       }}
     >
-      <h1 style={{ textAlign: 'center', color: '#333' }}>BrainBytes AI Tutor</h1>
+      <h1 style={{ textAlign: 'center', color: '#333' }}>BrainBytes AI Tutor Demo</h1>
 
       {isOffline && (
         <div
