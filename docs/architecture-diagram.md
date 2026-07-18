@@ -8,11 +8,9 @@ graph LR
         DEV[Developer]
         GIT[GitHub Repo]
     end
-
     subgraph "GitHub Actions"
         CI[CI/CD Pipeline<br/>Lint → Test → Build → E2E → Security]
     end
-
     subgraph "Railway.app Cloud Platform"
         subgraph "Backend Service"
             BE[Express API<br/>Port 3000<br/>node:18-alpine]
@@ -23,11 +21,15 @@ graph LR
         subgraph "MongoDB Plugin"
             DB[(MongoDB 7<br/>Persistent Storage)]
         end
+        subgraph "Monitoring Stack"
+            PROM[Prometheus<br/>Metrics Scraping & Alert Rules]
+            GRAF[Grafana<br/>Dashboard & Alert Notifications]
+        end
     end
-
     subgraph "External"
         GROQ[Groq AI API]
     end
+    TEAM[Team Member]
 
     DEV -->|git push| GIT
     GIT -->|trigger| CI
@@ -36,6 +38,10 @@ graph LR
     FE -->|HTTP / API calls| BE
     BE -->|Mongoose| DB
     BE -->|HTTPS| GROQ
+    BE -->|/metrics endpoint| PROM
+    PROM -->|datasource| GRAF
+    PROM -->|alert webhook| NOTIFY[Alert Notifications]
+    TEAM -->|views dashboards| GRAF
 ```
 
 ## Data Flow
