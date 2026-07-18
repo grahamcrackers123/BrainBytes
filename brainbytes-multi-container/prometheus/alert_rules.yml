@@ -2,7 +2,6 @@ groups:
   # APP HEALTH
   - name: application_health
     rules:
-
       - alert: HighAIResponseLatency
         expr: histogram_quantile(0.95, rate(brainbytes_ai_response_duration_seconds_bucket[5m])) > 5
         for: 2m
@@ -10,7 +9,7 @@ groups:
           severity: warning
         annotations:
           summary: "AI response time is high"
-          description: "95th percentile AI response duration has exceeded 5 seconds for 2 minutes."
+          description: "95th percentile AI response duration has exceeded 5 seconds for 2 minutes. See the 'Response Time Trends' panel."
 
       - alert: BackendDown
         expr: up{job="backend"} == 0
@@ -19,7 +18,7 @@ groups:
           severity: critical
         annotations:
           summary: "Backend is down"
-          description: "Prometheus cannot reach the backend service for 1 minute."
+          description: "Prometheus cannot reach the backend service for 1 minute. See the 'App Status' panel."
 
       - alert: HighErrorRate
         expr: sum(rate(brainbytes_http_requests_total{status=~"5.."}[5m])) / sum(rate(brainbytes_http_requests_total[5m])) > 0.05
@@ -28,27 +27,18 @@ groups:
           severity: warning
         annotations:
           summary: "High HTTP error rate"
-          description: "More than 5% of requests are returning 5xx errors over the last 5 minutes."
-
-      - alert: HighAIResponseLatencyCritical
-        expr: histogram_quantile(0.95, rate(brainbytes_ai_response_duration_seconds_bucket[5m])) > 8
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "AI response time critically slow"
-          description: "95th percentile AI response duration has exceeded 8 seconds for 2 minutes."
+          description: "More than 5% of requests are returning 5xx errors over the last 5 minutes. See the 'Error Rate' panel."
 
       - alert: HighErrorRateCritical
-        expr: sum(rate(brainbytes_http_requests_total{status=~"5.."}[5m])) / sum(rate(brainbytes_http_requests_total[5m])) > 0.15
+        expr: sum(rate(brainbytes_http_requests_total{status=~"[45].."}[5m])) / sum(rate(brainbytes_http_requests_total[5m])) * 100 > 5
         for: 3m
         labels:
           severity: critical
         annotations:
-          summary: "5xx error rate above 15% - severe"
-          description: "More than 15% of requests are failing over the last 3 minutes. Treat as a near-outage."
+          summary: "Error rate in the red zone"
+          description: "Error rate has crossed the 5% red threshold shown on the dashboard's Error Rate panel."
 
-  # RESOURCE USAGE
+  # RESOURCE ALERT
   - name: resource_usage
     rules:
       - alert: HighBackendCPUWarning
@@ -57,8 +47,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Backend CPU usage elevated"
-          description: "Backend process is using {{ $value | printf \"%.1f\" }}% of a core, above the 70% warning threshold."
+          summary: "CPU usage in the yellow zone"
+          description: "Backend CPU is at {{ $value | printf \"%.1f\" }}%, matching the gauge's yellow (70%) threshold."
 
       - alert: HighBackendCPUCritical
         expr: rate(process_cpu_seconds_total{job="backend"}[5m]) * 100 > 90
@@ -66,44 +56,23 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Backend CPU usage critical"
-          description: "Backend process is using {{ $value | printf \"%.1f\" }}% of a core, above the 90% critical threshold."
+          summary: "CPU usage in the red zone"
+          description: "Backend CPU is at {{ $value | printf \"%.1f\" }}%, matching the gauge's red (90%) threshold."
 
-      - alert: BackendMemoryGrowthWarning
-        expr: deriv(process_resident_memory_bytes{job="backend"}[30m]) > 1000000
-        for: 15m
+      - alert: HighBackendMemoryWarning
+        expr: process_resident_memory_bytes{job="backend"} > 300000000
+        for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Backend memory usage trending upward"
-          description: "Resident memory has been steadily increasing for 15+ minutes - possible leak."
+          summary: "Memory usage in the yellow zone"
+          description: "Backend memory is at {{ $value | humanize1024 }}B, matching the gauge's yellow (300MB) threshold. Adjust this threshold in both the alert and the dashboard gauge once you confirm your actual memory ceiling."
 
-  # BUSINESS METRIC
-  - name: business_metrics  
-    rules:
-      - alert: HighConcurrentLoad
-        expr: brainbytes_active_sessions > 20
-        for: 3m
+      - alert: HighBackendMemoryCritical
+        expr: process_resident_memory_bytes{job="backend"} > 450000000
+        for: 5m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "High number of concurrent chat requests"
-          description: "{{ $value }} chat requests are being processed simultaneously - approaching capacity limits."
-
-      - alert: NoTrafficDuringOperationalHours
-        expr: sum(rate(brainbytes_http_requests_total[15m])) == 0 and (hour() >= 0 and hour() < 14)
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "No requests received during operational hours"
-          description: "Zero requests in the last 15 minutes during 8am-10pm PHT. Check frontend/routing, or confirm it's genuinely idle."
-
-      - alert: SlowSubjectDetected
-        expr: histogram_quantile(0.95, sum by (le, subject) (rate(brainbytes_ai_response_duration_seconds_bucket[15m]))) > 6
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "AI responses for {{ $labels.subject }} are consistently slow"
-          description: "p95 latency for subject '{{ $labels.subject }}' is {{ $value | printf \"%.2f\" }}s over the last 15 minutes."
+          summary: "Memory usage in the red zone"
+          description: "Backend memory is at {{ $value | humanize1024 }}B, matching the gauge's red (450MB) threshold."
