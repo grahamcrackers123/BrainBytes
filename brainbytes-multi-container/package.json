@@ -4,5 +4,8 @@
     "express-rate-limit": "^8.5.2",
     "node-fetch": "^3.3.2",
     "openai": "^6.45.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.5"
   }
 }
