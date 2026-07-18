@@ -25,8 +25,8 @@
     },
     {
       "type": "panel",
-      "id": "heatmap",
-      "name": "Heatmap",
+      "id": "piechart",
+      "name": "Pie chart",
       "version": ""
     },
     {
@@ -222,7 +222,10 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [],
+          "max": 799999999,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -291,18 +294,7 @@
             "mode": "thresholds"
           },
           "decimals": 1,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Healthy"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "max": 99,
           "min": 0,
           "thresholds": {
@@ -712,16 +704,19 @@
       },
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
             }
-          }
+          },
+          "mappings": [],
+          "max": 50,
+          "min": 0
         },
         "overrides": []
       },
@@ -733,36 +728,22 @@
       },
       "id": 9,
       "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "Oranges",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
         "legend": {
-          "show": true
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "rowsFrame": {
-          "layout": "auto"
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
         "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "9.5.2",
@@ -773,14 +754,14 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(brainbytes_ai_response_duration_seconds_bucket[5m])",
+          "expr": "sum by (status) (\r\n  increase(brainbytes_http_requests_total[15m])\r\n)",
           "legendFormat": "{{subject}}",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "API Response Distribution",
-      "type": "heatmap"
+      "type": "piechart"
     },
     {
       "datasource": {
@@ -899,13 +880,13 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "BrainBytes",
   "uid": "a14c62e2-661f-4b26-a8b7-99b0fcfb18d0",
-  "version": 3,
+  "version": 6,
   "weekStart": ""
 }
